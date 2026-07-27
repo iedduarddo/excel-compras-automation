@@ -1,5 +1,7 @@
 # Excel Compras Automation
 
+[![CI](https://github.com/iedduarddo/excel-compras-automation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iedduarddo/excel-compras-automation/actions/workflows/ci.yml)
+
 Automação em Python para o **Teste Prático de Excel — Analista de Compras |
 Célula de Reservas**.
 
@@ -698,6 +700,9 @@ Depois salve.
 
 ```text
 ExcelComprasAutomation/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── .vscode/
 │   ├── extensions.json
 │   ├── launch.json
@@ -877,7 +882,7 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado na suíte atual: `37 passed`, sem falhas ou erros.
+Resultado esperado: todos os testes aprovados, sem falhas ou erros.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -901,6 +906,23 @@ O projeto adota inicialmente uma cobertura mínima de 34%. Esse limite transform
 a medição atual em uma proteção automática: o comando falhará caso uma mudança
 reduza a cobertura. O percentual será elevado gradualmente com os próximos testes
 de integração com o Excel.
+
+## Integração contínua no GitHub
+
+O arquivo `.github/workflows/ci.yml` executa automaticamente a validação quando:
+
+- há um `push` nas branches `main` ou `develop`;
+- um Pull Request é aberto ou atualizado para essas branches;
+- a execução é iniciada manualmente pela aba **Actions** do GitHub.
+
+O workflow usa Windows e testa as versões Python 3.11 e 3.14. Em cada versão,
+ele instala as dependências, verifica a sintaxe, executa o Ruff, confere a
+formatação e roda os testes com a cobertura mínima configurada.
+
+Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
+isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
+localmente em um computador Windows com Excel instalado. O CI valida as regras
+de negócio e os componentes que não dependem da interface do Excel.
 
 Os testes verificam:
 
@@ -1074,6 +1096,7 @@ Consulte o guia completo:
 - [ ] Tabela Dinâmica e gráfico conferidos.
 - [ ] Original preservado.
 - [ ] Arquivo final renomeado com o nome completo.
+- [ ] GitHub Actions aprovado no Pull Request.
 
 ---
 
