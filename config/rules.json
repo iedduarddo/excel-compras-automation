@@ -1,0 +1,21 @@
+{
+  "priority_weights": {
+    "card_divergent": 40,
+    "card_pending": 30,
+    "card_other_issue": 25,
+    "criticality_emergency": 35,
+    "criticality_executive": 25,
+    "outside_policy": 30,
+    "policy_not_found": 40,
+    "booking_pending": 8,
+    "booking_reschedule": 5,
+    "cost_over_limit_max": 25,
+    "lead_time_shortfall_max": 20,
+    "total_value_max": 10
+  },
+  "priority_thresholds": {
+    "critical": 75,
+    "high": 25
+  },
+  "top_requests": 5
+}

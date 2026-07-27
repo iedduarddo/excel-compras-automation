@@ -1,0 +1,232 @@
+{
+  "sheets": {
+    "base": [
+      "Base_Viagens",
+      "Base de Viagens",
+      "Viagens",
+      "Solicitações de Viagem",
+      "Reservas"
+    ],
+    "policies": [
+      "Políticas_Fornecedores",
+      "Politicas e Fornecedores",
+      "Políticas de Viagem",
+      "Fornecedores",
+      "Regras"
+    ],
+    "responses": [
+      "Respostas",
+      "Análise",
+      "Analise do Candidato",
+      "Resumo",
+      "Dashboard"
+    ]
+  },
+  "base_columns": {
+    "request_id": [
+      "ID Solicitação",
+      "ID da Solicitação",
+      "Código Solicitação",
+      "Solicitação",
+      "ID"
+    ],
+    "request_date": [
+      "Data Solicitação",
+      "Data da Solicitação",
+      "Data Pedido",
+      "Data Requisição"
+    ],
+    "travel_date": [
+      "Data Viagem",
+      "Data da Viagem",
+      "Data Embarque",
+      "Data do Serviço"
+    ],
+    "traveler": [
+      "Viajante",
+      "Nome do Viajante",
+      "Colaborador",
+      "Passageiro"
+    ],
+    "area": [
+      "Área",
+      "Departamento",
+      "Setor"
+    ],
+    "cost_center": [
+      "Centro de Custo",
+      "Centro Custo",
+      "CC",
+      "Cost Center"
+    ],
+    "service_type": [
+      "Tipo de Serviço",
+      "Serviço",
+      "Categoria do Serviço",
+      "Tipo Serviço"
+    ],
+    "destination": [
+      "Destino",
+      "Local de Destino",
+      "Cidade Destino"
+    ],
+    "supplier": [
+      "Fornecedor",
+      "Prestador",
+      "Agência",
+      "Companhia"
+    ],
+    "quantity": [
+      "Quantidade",
+      "Qtd",
+      "Qtde"
+    ],
+    "unit_value": [
+      "Valor Unitário",
+      "Preço Unitário",
+      "Valor Unit",
+      "Tarifa Unitária"
+    ],
+    "fees": [
+      "Taxas",
+      "Taxa",
+      "Encargos",
+      "Impostos"
+    ],
+    "booking_status": [
+      "Status Reserva",
+      "Status da Reserva",
+      "Situação Reserva"
+    ],
+    "criticality": [
+      "Criticidade",
+      "Nível de Criticidade",
+      "Tipo de Viagem"
+    ],
+    "card_status": [
+      "Status Cartão",
+      "Status do Cartão",
+      "Cartão Corporativo",
+      "Situação do Cartão"
+    ],
+    "total_value": [
+      "Valor Total",
+      "Total",
+      "Valor da Solicitação"
+    ],
+    "lead_days": [
+      "Dias Antecedência",
+      "Dias de Antecedência",
+      "Antecedência",
+      "Prazo em Dias"
+    ],
+    "policy_limit": [
+      "Limite Política",
+      "Limite da Política",
+      "Valor Limite",
+      "Teto da Política"
+    ],
+    "policy_status": [
+      "Status Política",
+      "Status da Política",
+      "Aderência à Política",
+      "Situação Política"
+    ],
+    "limit_difference": [
+      "Diferença p/ Limite",
+      "Diferença para o Limite",
+      "Desvio do Limite",
+      "Variação do Limite"
+    ],
+    "priority": [
+      "Prioridade",
+      "Nível de Prioridade",
+      "Classificação"
+    ],
+    "priority_score": [
+      "Score Prioridade",
+      "Pontuação de Prioridade",
+      "Score de Risco"
+    ]
+  },
+  "policy_columns": {
+    "service_type": [
+      "Tipo de Serviço",
+      "Serviço",
+      "Categoria do Serviço"
+    ],
+    "limit_value": [
+      "Limite por Viajante (R$)",
+      "Limite por Viajante",
+      "Limite da Política",
+      "Valor Limite",
+      "Teto"
+    ],
+    "min_lead_days": [
+      "Antecedência Mínima (dias)",
+      "Antecedência Mínima",
+      "Prazo Mínimo",
+      "Mínimo de Dias"
+    ]
+  },
+  "response_columns": {
+    "indicator": [
+      "Indicador",
+      "Métrica",
+      "Descrição"
+    ],
+    "answer": [
+      "Resposta",
+      "Resultado",
+      "Valor"
+    ],
+    "formula_used": [
+      "Fórmula utilizada",
+      "Fórmula",
+      "Cálculo"
+    ]
+  },
+  "indicator_labels": {
+    "total_travel_value": [
+      "Valor total das viagens",
+      "Total das viagens"
+    ],
+    "outside_policy_value": [
+      "Valor total fora da política",
+      "Valor fora da política"
+    ],
+    "outside_policy_count": [
+      "Quantidade de solicitações fora da política",
+      "Solicitações fora da política"
+    ],
+    "outside_policy_percent": [
+      "Percentual fora da política",
+      "% fora da política"
+    ],
+    "card_issue_value": [
+      "Valor pendente/divergente no cartão",
+      "Valor com problema no cartão"
+    ],
+    "emergency_count": [
+      "Quantidade de solicitações emergenciais",
+      "Solicitações emergenciais"
+    ],
+    "top_cost_center": [
+      "Centro de custo com maior despesa",
+      "Maior centro de custo"
+    ],
+    "top_supplier": [
+      "Fornecedor com maior valor contratado",
+      "Fornecedor com maior gasto"
+    ],
+    "potential_savings": [
+      "Economia potencial se todas respeitassem o limite",
+      "Economia potencial"
+    ],
+    "average_ticket": [
+      "Ticket médio por solicitação",
+      "Ticket médio"
+    ]
+  }
+}
+
