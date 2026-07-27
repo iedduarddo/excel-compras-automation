@@ -1,27 +1,37 @@
 # Ambiente virtual
 .venv/
 
-# Cache do Python
+# Arquivos temporários do Python
 __pycache__/
 *.py[cod]
-
-# Testes e cobertura
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# Arquivos locais e segredos
+# Configurações e segredos locais
 .env
-*.log
+.env.*
+!.env.example
 
-# Planilhas de entrada, saída e backup
+# Entradas e resultados locais
 input/*.xlsx
 input/*.xlsm
-output/*.xlsx
-output/*.xlsm
-backup/*.xlsx
-backup/*.xlsm
+output/*
+backup/*
+logs/*
+
+# Mantém as pastas vazias no projeto
+!input/.gitkeep
+!output/.gitkeep
+!backup/.gitkeep
+!logs/.gitkeep
 
 # Arquivos temporários do Excel
 ~$*.xlsx
 ~$*.xlsm
+
+# Sistema e editor
+.DS_Store
+Thumbs.db
