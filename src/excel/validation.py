@@ -11,7 +11,6 @@ from src.core.exceptions import ValidationError
 from src.core.models import TravelResult, WorkbookLayout
 from src.excel.detection import find_indicator_rows
 
-
 FORMULA_ERRORS = {
     "#REF!",
     "#DIV/0!",
@@ -122,7 +121,10 @@ def validate_output(
 
         total_indicator_row = indicator_rows["total_travel_value"][0]
         total_indicator = response_values.cell(total_indicator_row, answer_column).value
-        if total_indicator is None or abs(float(total_indicator) - expected_total) > 0.01:
+        if (
+            total_indicator is None
+            or abs(float(total_indicator) - expected_total) > 0.01
+        ):
             raise ValidationError(
                 "O indicador de valor total não confere com a base de viagens."
             )
@@ -132,9 +134,7 @@ def validate_output(
     pivot_parts = sorted(
         name for name in names if name.startswith("xl/pivotTables/pivotTable")
     )
-    chart_parts = sorted(
-        name for name in names if name.startswith("xl/charts/chart")
-    )
+    chart_parts = sorted(name for name in names if name.startswith("xl/charts/chart"))
     if native_pivot_expected and not pivot_parts:
         raise ValidationError(
             "A Tabela Dinâmica nativa não foi encontrada dentro do arquivo .xlsx."
@@ -143,8 +143,7 @@ def validate_output(
         raise ValidationError("Nenhum gráfico foi encontrado no arquivo final.")
 
     conditional_rules = sum(
-        len(rules)
-        for rules in base_formula.conditional_formatting._cf_rules.values()
+        len(rules) for rules in base_formula.conditional_formatting._cf_rules.values()
     )
     if conditional_rules < 2:
         raise ValidationError(

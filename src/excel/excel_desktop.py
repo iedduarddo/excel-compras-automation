@@ -14,7 +14,6 @@ from zipfile import ZipFile
 from src.core.exceptions import ExcelDesktopError
 from src.core.models import WorkbookLayout
 
-
 XL_DATABASE = 1
 XL_ROW_FIELD = 1
 XL_COLUMN_FIELD = 2
@@ -100,19 +99,20 @@ def create_native_pivot_and_recalculate(
         for index in range(response_sheet.ChartObjects().Count, 0, -1):
             response_sheet.ChartObjects(index).Delete()
 
-        source_last_row = source_sheet.Cells(
-            source_sheet.Rows.Count,
-            11,
-        ).End(XL_UP).Row
+        source_last_row = (
+            source_sheet.Cells(
+                source_sheet.Rows.Count,
+                11,
+            )
+            .End(XL_UP)
+            .Row
+        )
         if source_last_row < 4:
             raise ExcelDesktopError(
                 "A fonte estática da Tabela Dinâmica não possui dados."
             )
 
-        source_address = (
-            f"'{PIVOT_SOURCE_SHEET}'!"
-            f"R3C11:R{source_last_row}C13"
-        )
+        source_address = f"'{PIVOT_SOURCE_SHEET}'!R3C11:R{source_last_row}C13"
         destination = response_sheet.Cells(pivot_start_row, 1)
 
         logger.info("Criando a Tabela Dinâmica nativa.")
@@ -142,7 +142,7 @@ def create_native_pivot_and_recalculate(
             "Soma de Valor Total",
             XL_SUM,
         )
-        value_field.NumberFormat = 'R$ #,##0.00'
+        value_field.NumberFormat = "R$ #,##0.00"
         pivot_table.RowAxisLayout(XL_TABULAR_ROW)
         pivot_table.TableStyle2 = "PivotStyleMedium2"
         # Remove os totais gerais da área usada pelo gráfico. A linha
@@ -183,13 +183,11 @@ def create_native_pivot_and_recalculate(
         chart.SetSourceData(pivot_table.TableRange1)
         chart.ChartType = XL_COLUMN_CLUSTERED
         chart.HasTitle = True
-        chart.ChartTitle.Text = (
-            "Valor Total por Centro de Custo e Tipo de Serviço"
-        )
+        chart.ChartTitle.Text = "Valor Total por Centro de Custo e Tipo de Serviço"
         chart.HasLegend = True
         chart.Legend.Position = XL_LEGEND_BOTTOM
         try:
-            chart.Axes(2).TickLabels.NumberFormat = 'R$ #,##0'
+            chart.Axes(2).TickLabels.NumberFormat = "R$ #,##0"
         except Exception:
             logger.debug(
                 "O Excel não aceitou o formato explícito do eixo; "
@@ -212,8 +210,11 @@ def create_native_pivot_and_recalculate(
             try:
                 excel.EnableEvents = True
                 excel.Calculation = XL_CALCULATION_AUTOMATIC
-            except Exception:
-                pass
+            except (pythoncom.com_error, AttributeError):
+                logger.debug(
+                    "Não foi possível restaurar todas as opções do Excel.",
+                    exc_info=True,
+                )
             excel.Quit()
         pythoncom.CoUninitialize()
 
@@ -284,30 +285,31 @@ def _set_calculation_on_open(output_file: Path) -> None:
         b'fullCalcOnLoad="1" forceFullCalc="1"/>'
     )
 
-    temporary_handle = tempfile.NamedTemporaryFile(
+    with tempfile.NamedTemporaryFile(
         dir=output_file.parent,
         prefix=f".{output_file.stem}_",
         suffix=output_file.suffix,
         delete=False,
-    )
-    temporary_path = Path(temporary_handle.name)
-    temporary_handle.close()
+    ) as temporary_handle:
+        temporary_path = Path(temporary_handle.name)
 
     try:
-        with ZipFile(output_file, "r") as source_archive:
-            with ZipFile(temporary_path, "w") as target_archive:
-                for entry in source_archive.infolist():
-                    data = source_archive.read(entry.filename)
-                    if entry.filename == "xl/workbook.xml":
-                        if calc_pattern.search(data):
-                            data = calc_pattern.sub(calc_element, data, count=1)
-                        else:
-                            data = data.replace(
-                                b"</workbook>",
-                                calc_element + b"</workbook>",
-                                1,
-                            )
-                    target_archive.writestr(entry, data)
+        with (
+            ZipFile(output_file, "r") as source_archive,
+            ZipFile(temporary_path, "w") as target_archive,
+        ):
+            for entry in source_archive.infolist():
+                data = source_archive.read(entry.filename)
+                if entry.filename == "xl/workbook.xml":
+                    if calc_pattern.search(data):
+                        data = calc_pattern.sub(calc_element, data, count=1)
+                    else:
+                        data = data.replace(
+                            b"</workbook>",
+                            calc_element + b"</workbook>",
+                            1,
+                        )
+                target_archive.writestr(entry, data)
         os.replace(temporary_path, output_file)
     finally:
         temporary_path.unlink(missing_ok=True)

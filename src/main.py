@@ -12,9 +12,7 @@ from src.core.exceptions import AutomationError
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "Preenche e analisa a planilha do teste de Analista de Compras."
-        )
+        description=("Preenche e analisa a planilha do teste de Analista de Compras.")
     )
     parser.add_argument(
         "--input",
@@ -93,4 +91,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

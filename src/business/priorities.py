@@ -65,8 +65,7 @@ def apply_priority_scores(
             score += weights["outside_policy"]
             if travel.limit_difference > 0:
                 reasons.append(
-                    "custo "
-                    f"{_currency(travel.limit_difference)} acima do limite"
+                    f"custo {_currency(travel.limit_difference)} acima do limite"
                 )
                 actions.append("renegociar a tarifa ou solicitar exceção aprovada")
             if travel.lead_days < travel.min_lead_days:
@@ -74,7 +73,9 @@ def apply_priority_scores(
                     f"antecedência de {_days(travel.lead_days)} "
                     f"(mínimo {_days(travel.min_lead_days)})"
                 )
-                actions.append("registrar a justificativa do prazo e emitir com urgência")
+                actions.append(
+                    "registrar a justificativa do prazo e emitir com urgência"
+                )
 
         booking = normalize_text(travel.booking_status)
         if booking == "pendente":
@@ -100,9 +101,7 @@ def apply_priority_scores(
                 shortfall * weights["lead_time_shortfall_max"],
             )
 
-        score += (
-            travel.total_value / max_total
-        ) * weights["total_value_max"]
+        score += (travel.total_value / max_total) * weights["total_value_max"]
         travel.score = round(score, 2)
         travel.priority = (
             "Crítica"

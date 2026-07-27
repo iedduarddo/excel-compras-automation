@@ -47,8 +47,10 @@ def read_policies(
         min_days = worksheet.cell(row, columns["min_lead_days"]).value
         if service is None and limit_value is None and min_days is None:
             continue
-        if not service or not isinstance(limit_value, Real) or not isinstance(
-            min_days, Real
+        if (
+            not service
+            or not isinstance(limit_value, Real)
+            or not isinstance(min_days, Real)
         ):
             continue
 
@@ -180,4 +182,3 @@ def analyze_travels(
     if not results:
         raise ValidationError("Nenhuma solicitação válida foi encontrada na base.")
     return results
-

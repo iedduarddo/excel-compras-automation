@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from src.business.policies import analyze_travels, find_last_data_row, read_policies
