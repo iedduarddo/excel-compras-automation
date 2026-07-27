@@ -13,7 +13,8 @@ com versionamento semântico.
 - configuração reproduzível das ferramentas no `pyproject.toml`;
 - testes de políticas, cálculos, arquivos, configurações e logging;
 - cenários de erro para datas, números, entradas ambíguas e JSON inválido;
-- cobertura mínima inicial de 34% para impedir regressões.
+- cobertura mínima inicial de 34% para impedir regressões;
+- integração contínua no GitHub Actions para Windows e Python 3.11/3.14.
 
 ### Corrigido
 
@@ -28,7 +29,7 @@ com versionamento semântico.
 - ampliar os testes de regressão e integração;
 - separar o escritor da planilha em componentes menores;
 - fortalecer a validação de configurações e artefatos do Excel;
-- adicionar análise estática, cobertura e integração contínua;
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
 
 ## 1.0.0 — 2026-07-27
