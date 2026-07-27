@@ -6,6 +6,19 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- Ruff para análise estática, ordenação de imports e formatação;
+- pytest-cov para medição da cobertura dos testes;
+- configuração reproduzível das ferramentas no `pyproject.toml`.
+
+### Corrigido
+
+- imports não utilizados e fora da ordem;
+- tratamento silencioso de erro durante a restauração do Excel;
+- criação e fechamento do arquivo temporário de reparo OOXML;
+- geração de timestamps com informação de fuso horário.
+
 ### Planejado
 
 - ampliar os testes de regressão e integração;

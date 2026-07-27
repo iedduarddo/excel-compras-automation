@@ -874,11 +874,24 @@ python -m pip install -r requirements-dev.txt
 Execute:
 
 ```powershell
-python -m pytest
+python -m pytest -q
 ```
 
 Resultado esperado: todos os testes coletados devem aparecer como `passed`, sem
 falhas ou erros.
+
+Verifique a qualidade e a formatação:
+
+```powershell
+python -m ruff check .
+python -m ruff format --check .
+```
+
+Meça a cobertura:
+
+```powershell
+python -m pytest --cov=src --cov-report=term-missing -q
+```
 
 Os testes verificam:
 

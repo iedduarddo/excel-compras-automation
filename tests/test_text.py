@@ -1,10 +1,6 @@
 """Testes das funções de tratamento de textos."""
 
-from src.services.text import (
-    normalize_text,
-    sanitize_filename,
-    text_similarity,
-)
+from src.services.text import normalize_text, sanitize_filename, text_similarity
 
 
 def test_normalize_text_removes_accents_and_punctuation() -> None:

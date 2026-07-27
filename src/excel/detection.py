@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -11,7 +11,6 @@ from openpyxl.worksheet.worksheet import Worksheet
 from src.core.exceptions import DetectionError
 from src.core.models import SheetLayout, WorkbookLayout
 from src.services.text import normalize_text, text_similarity
-
 
 BASE_REQUIRED_FIELDS = (
     "request_id",
@@ -235,4 +234,3 @@ def find_indicator_rows(
             + ", ".join(missing)
         )
     return found
-

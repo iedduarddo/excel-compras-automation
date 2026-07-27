@@ -8,7 +8,6 @@ from typing import Any
 
 from src.core.exceptions import AutomationError
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = PROJECT_ROOT / "config"
 INPUT_DIR = PROJECT_ROOT / "input"

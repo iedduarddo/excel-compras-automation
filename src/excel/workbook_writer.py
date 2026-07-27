@@ -16,11 +16,9 @@ from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.business.priorities import rank_immediate_requests
-from src.core.exceptions import DetectionError
-from src.core.models import Policy, SheetLayout, TravelResult, WorkbookLayout
+from src.core.models import Policy, TravelResult, WorkbookLayout
 from src.excel.detection import find_indicator_rows
 from src.services.text import normalize_text, text_similarity
-
 
 DERIVED_HEADERS = {
     "total_value": "Valor Total",
@@ -90,24 +88,14 @@ def ensure_derived_columns(
     worksheet.column_dimensions[
         get_column_letter(columns["priority_score"])
     ].hidden = True
-    worksheet.column_dimensions[
-        get_column_letter(columns["total_value"])
-    ].width = 15
-    worksheet.column_dimensions[
-        get_column_letter(columns["lead_days"])
-    ].width = 13
-    worksheet.column_dimensions[
-        get_column_letter(columns["policy_limit"])
-    ].width = 15
-    worksheet.column_dimensions[
-        get_column_letter(columns["policy_status"])
-    ].width = 15
+    worksheet.column_dimensions[get_column_letter(columns["total_value"])].width = 15
+    worksheet.column_dimensions[get_column_letter(columns["lead_days"])].width = 13
+    worksheet.column_dimensions[get_column_letter(columns["policy_limit"])].width = 15
+    worksheet.column_dimensions[get_column_letter(columns["policy_status"])].width = 15
     worksheet.column_dimensions[
         get_column_letter(columns["limit_difference"])
     ].width = 18
-    worksheet.column_dimensions[
-        get_column_letter(columns["priority"])
-    ].width = 13
+    worksheet.column_dimensions[get_column_letter(columns["priority"])].width = 13
 
     _extend_or_create_table(
         worksheet=worksheet,
@@ -233,7 +221,7 @@ def create_support_sheet(
             6,
             f"=SUMIF({cost_center_range},E{row},{total_range})",
         )
-        worksheet.cell(row, 6).number_format = 'R$ #,##0.00'
+        worksheet.cell(row, 6).number_format = "R$ #,##0.00"
 
     worksheet["H3"] = "Fornecedor"
     worksheet["I3"] = "Valor Total"
@@ -249,9 +237,17 @@ def create_support_sheet(
             9,
             f"=SUMIF({supplier_range},H{row},{total_range})",
         )
-        worksheet.cell(row, 9).number_format = 'R$ #,##0.00'
+        worksheet.cell(row, 9).number_format = "R$ #,##0.00"
 
-    for column, width in {"A": 30, "B": 12, "C": 35, "E": 20, "F": 16, "H": 24, "I": 16}.items():
+    for column, width in {
+        "A": 30,
+        "B": 12,
+        "C": 35,
+        "E": 20,
+        "F": 16,
+        "H": 24,
+        "I": 16,
+    }.items():
         worksheet.column_dimensions[column].width = width
     for row in worksheet.iter_rows(min_row=4, max_row=max(17, 3 + len(suppliers))):
         for cell in row:
@@ -268,7 +264,7 @@ def create_support_sheet(
         worksheet.cell(row, 11, travel.cost_center)
         worksheet.cell(row, 12, travel.service_type)
         worksheet.cell(row, 13, travel.total_value)
-        worksheet.cell(row, 13).number_format = 'R$ #,##0.00'
+        worksheet.cell(row, 13).number_format = "R$ #,##0.00"
     worksheet.column_dimensions["K"].width = 20
     worksheet.column_dimensions["L"].width = 24
     worksheet.column_dimensions["M"].width = 16
@@ -276,12 +272,8 @@ def create_support_sheet(
     worksheet.sheet_state = "hidden"
     return {
         **rule_cells,
-        "cost_center_labels": (
-            f"'{SUPPORT_SHEET}'!$E$4:$E${3 + len(cost_centers)}"
-        ),
-        "cost_center_values": (
-            f"'{SUPPORT_SHEET}'!$F$4:$F${3 + len(cost_centers)}"
-        ),
+        "cost_center_labels": (f"'{SUPPORT_SHEET}'!$E$4:$E${3 + len(cost_centers)}"),
+        "cost_center_values": (f"'{SUPPORT_SHEET}'!$F$4:$F${3 + len(cost_centers)}"),
         "supplier_labels": f"'{SUPPORT_SHEET}'!$H$4:$H${3 + len(suppliers)}",
         "supplier_values": f"'{SUPPORT_SHEET}'!$I$4:$I${3 + len(suppliers)}",
         "base_sheet": base_sheet,
@@ -365,7 +357,7 @@ def write_base_formulas(
         )
         worksheet[reference["policy_status"]] = (
             f'=IF({reference["policy_limit"]}=0,"Revisar",'
-            f'IF(OR({reference["total_value"]}>{reference["policy_limit"]},'
+            f"IF(OR({reference['total_value']}>{reference['policy_limit']},"
             f'{reference["lead_days"]}<{min_days_lookup}),"Fora","OK"))'
         )
         worksheet[reference["limit_difference"]] = (
@@ -374,30 +366,30 @@ def write_base_formulas(
 
         card_score = (
             f'IF({reference["card_status"]}="Divergente",'
-            f'{support_refs["card_divergent"]},'
+            f"{support_refs['card_divergent']},"
             f'IF({reference["card_status"]}="Pendente",'
-            f'{support_refs["card_pending"]},'
+            f"{support_refs['card_pending']},"
             f'IF(AND({reference["card_status"]}<>"",'
             f'{reference["card_status"]}<>"Conferido"),'
-            f'{support_refs["card_other_issue"]},0)))'
+            f"{support_refs['card_other_issue']},0)))"
         )
         criticality_score = (
             f'IF({reference["criticality"]}="Emergencial",'
-            f'{support_refs["criticality_emergency"]},'
+            f"{support_refs['criticality_emergency']},"
             f'IF({reference["criticality"]}="Executivo",'
-            f'{support_refs["criticality_executive"]},0))'
+            f"{support_refs['criticality_executive']},0))"
         )
         policy_score = (
             f'IF({reference["policy_status"]}="Revisar",'
-            f'{support_refs["policy_not_found"]},'
+            f"{support_refs['policy_not_found']},"
             f'IF({reference["policy_status"]}="Fora",'
-            f'{support_refs["outside_policy"]},0))'
+            f"{support_refs['outside_policy']},0))"
         )
         booking_score = (
             f'IF({reference["booking_status"]}="Pendente",'
-            f'{support_refs["booking_pending"]},'
+            f"{support_refs['booking_pending']},"
             f'IF({reference["booking_status"]}="Remarcação",'
-            f'{support_refs["booking_reschedule"]},0))'
+            f"{support_refs['booking_reschedule']},0))"
         )
         cost_score = (
             f"IF(AND({reference['policy_limit']}>0,"
@@ -425,7 +417,7 @@ def write_base_formulas(
             f"+{booking_score}+{cost_score}+{lead_score}+{value_score},2)"
         )
         worksheet[reference["priority"]] = (
-            f'=IF({reference["priority_score"]}>={support_refs["critical_threshold"]},'
+            f"=IF({reference['priority_score']}>={support_refs['critical_threshold']},"
             f'"Crítica",IF({reference["priority_score"]}>='
             f'{support_refs["high_threshold"]},"Alta","Normal"))'
         )
@@ -434,7 +426,7 @@ def write_base_formulas(
     for canonical in currency_columns:
         letter = get_column_letter(columns[canonical])
         for row in range(first_row, last_row + 1):
-            worksheet[f"{letter}{row}"].number_format = 'R$ #,##0.00'
+            worksheet[f"{letter}{row}"].number_format = "R$ #,##0.00"
     score_letter = get_column_letter(columns["priority_score"])
     for row in range(first_row, last_row + 1):
         worksheet[f"{score_letter}{row}"].number_format = "0.00"
@@ -479,9 +471,7 @@ def write_responses(
         "outside_policy_value": (
             f'=SUMIFS({ranges["total_value"]},{ranges["policy_status"]},"Fora")'
         ),
-        "outside_policy_count": (
-            f'=COUNTIF({ranges["policy_status"]},"Fora")'
-        ),
+        "outside_policy_count": (f'=COUNTIF({ranges["policy_status"]},"Fora")'),
         "outside_policy_percent": (
             f'=IFERROR(COUNTIF({ranges["policy_status"]},"Fora")/'
             f"COUNTA({ranges['request_id']}),0)"
@@ -490,9 +480,7 @@ def write_responses(
             f'=SUMIFS({ranges["total_value"]},{ranges["card_status"]},"Pendente")'
             f'+SUMIFS({ranges["total_value"]},{ranges["card_status"]},"Divergente")'
         ),
-        "emergency_count": (
-            f'=COUNTIF({ranges["criticality"]},"Emergencial")'
-        ),
+        "emergency_count": (f'=COUNTIF({ranges["criticality"]},"Emergencial")'),
         "top_cost_center": (
             f"=INDEX({support_refs['cost_center_labels']},"
             f"MATCH(MAX({support_refs['cost_center_values']}),"
@@ -504,7 +492,7 @@ def write_responses(
             f"{support_refs['supplier_values']},0))"
         ),
         "potential_savings": (
-            f'=SUMIFS({ranges["limit_difference"]},'
+            f"=SUMIFS({ranges['limit_difference']},"
             f'{ranges["policy_status"]},"Fora",'
             f'{ranges["limit_difference"]},">0")'
         ),
@@ -534,7 +522,7 @@ def write_responses(
         answer = worksheet.cell(row, answer_column)
         answer.value = formulas[key]
         if key in currency_indicators:
-            answer.number_format = 'R$ #,##0.00'
+            answer.number_format = "R$ #,##0.00"
         elif key == "outside_policy_percent":
             answer.number_format = "0.0%"
         elif key in {"outside_policy_count", "emergency_count"}:
@@ -604,8 +592,7 @@ def create_fallback_summary_and_chart(
     worksheet.cell(pivot_start_row, total_column, "Total Geral")
     _style_header_range(
         worksheet,
-        f"A{pivot_start_row}:"
-        f"{get_column_letter(total_column)}{pivot_start_row}",
+        f"A{pivot_start_row}:{get_column_letter(total_column)}{pivot_start_row}",
     )
 
     for row_offset, cost_center in enumerate(cost_centers, start=1):
@@ -619,13 +606,13 @@ def create_fallback_summary_and_chart(
                 f"=SUMIFS({total_range},{cost_center_range},$A{row},"
                 f"{service_range},{service_header})",
             )
-            worksheet.cell(row, column_offset).number_format = 'R$ #,##0.00'
+            worksheet.cell(row, column_offset).number_format = "R$ #,##0.00"
         worksheet.cell(
             row,
             total_column,
             f"=SUM(B{row}:{get_column_letter(total_column - 1)}{row})",
         )
-        worksheet.cell(row, total_column).number_format = 'R$ #,##0.00'
+        worksheet.cell(row, total_column).number_format = "R$ #,##0.00"
 
     total_row = pivot_start_row + len(cost_centers) + 1
     worksheet.cell(total_row, 1, "Total Geral")
@@ -636,7 +623,7 @@ def create_fallback_summary_and_chart(
             column,
             f"=SUM({letter}{pivot_start_row + 1}:{letter}{total_row - 1})",
         )
-        worksheet.cell(total_row, column).number_format = 'R$ #,##0.00'
+        worksheet.cell(total_row, column).number_format = "R$ #,##0.00"
     _style_total_range(
         worksheet,
         f"A{total_row}:{get_column_letter(total_column)}{total_row}",
@@ -667,7 +654,9 @@ def create_fallback_summary_and_chart(
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(categories)
     chart.legend.position = "b"
-    worksheet.add_chart(chart, f"{get_column_letter(total_column + 2)}{pivot_start_row}")
+    worksheet.add_chart(
+        chart, f"{get_column_letter(total_column + 2)}{pivot_start_row}"
+    )
 
 
 def apply_conditional_formatting(
@@ -680,9 +669,7 @@ def apply_conditional_formatting(
     worksheet = workbook[layout.base.title]
     first_row = layout.base.header_row + 1
     last_visible_column = layout.base.columns["priority"]
-    visible_range = (
-        f"A{first_row}:{get_column_letter(last_visible_column)}{last_row}"
-    )
+    visible_range = f"A{first_row}:{get_column_letter(last_visible_column)}{last_row}"
     policy_letter = get_column_letter(layout.base.columns["policy_status"])
     priority_letter = get_column_letter(layout.base.columns["priority"])
 
@@ -748,10 +735,7 @@ def _extend_or_create_table(
 
     table = Table(
         displayName="BaseViagensTable",
-        ref=(
-            f"A{header_row}:"
-            f"{get_column_letter(last_column)}{last_row}"
-        ),
+        ref=(f"A{header_row}:{get_column_letter(last_column)}{last_row}"),
     )
     table.tableStyleInfo = TableStyleInfo(
         name="TableStyleMedium2",
@@ -809,9 +793,11 @@ def _find_priority_table(worksheet: Worksheet) -> tuple[int, dict[str, int]]:
         for column in range(1, min(worksheet.max_column, 12) + 1):
             value = worksheet.cell(row, column).value
             for canonical, options in aliases.items():
-                if value is not None and max(
-                    text_similarity(value, option) for option in options
-                ) >= 0.86:
+                if (
+                    value is not None
+                    and max(text_similarity(value, option) for option in options)
+                    >= 0.86
+                ):
                     mapping[canonical] = column
         if len(mapping) >= 3 and "request_id" in mapping:
             defaults = {
@@ -883,9 +869,10 @@ def _find_pivot_title_row(worksheet: Worksheet) -> int:
     for row in range(1, min(worksheet.max_row, 100) + 1):
         for column in range(1, min(worksheet.max_column, 12) + 1):
             value = worksheet.cell(row, column).value
-            if value is not None and max(
-                text_similarity(value, alias) for alias in aliases
-            ) >= 0.86:
+            if (
+                value is not None
+                and max(text_similarity(value, alias) for alias in aliases) >= 0.86
+            ):
                 return row
     return worksheet.max_row + 2
 

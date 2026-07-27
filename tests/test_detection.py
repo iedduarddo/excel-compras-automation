@@ -53,4 +53,3 @@ def test_detects_renamed_sheets_and_reordered_columns() -> None:
     assert layout.policies.columns["min_lead_days"] == 1
     assert layout.responses.title == "Painel Gerencial"
     assert layout.responses.columns["answer"] == 2
-

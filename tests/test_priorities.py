@@ -65,4 +65,3 @@ def test_ranking_is_deterministic() -> None:
     ranked = rank_immediate_requests([first, second], quantity=2)
 
     assert [item.request_id for item in ranked] == ["VIA-001", "VIA-002"]
-
