@@ -10,14 +10,18 @@ com versionamento semântico.
 
 - Ruff para análise estática, ordenação de imports e formatação;
 - pytest-cov para medição da cobertura dos testes;
-- configuração reproduzível das ferramentas no `pyproject.toml`.
+- configuração reproduzível das ferramentas no `pyproject.toml`;
+- testes de políticas, cálculos, arquivos, configurações e logging;
+- cenários de erro para datas, números, entradas ambíguas e JSON inválido;
+- cobertura mínima inicial de 34% para impedir regressões.
 
 ### Corrigido
 
 - imports não utilizados e fora da ordem;
 - tratamento silencioso de erro durante a restauração do Excel;
 - criação e fechamento do arquivo temporário de reparo OOXML;
-- geração de timestamps com informação de fuso horário.
+- geração de timestamps com informação de fuso horário;
+- fechamento explícito dos handlers antigos ao reconfigurar o logger.
 
 ### Planejado
 

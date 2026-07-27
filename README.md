@@ -877,8 +877,12 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado: todos os testes coletados devem aparecer como `passed`, sem
-falhas ou erros.
+Resultado esperado na suíte atual: `37 passed`, sem falhas ou erros.
+
+Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
+próprio projeto. Isso evita erros de permissão que algumas instalações do
+Windows apresentam na pasta temporária global do usuário. A pasta é descartável
+e está protegida pelo `.gitignore`.
 
 Verifique a qualidade e a formatação:
 
@@ -893,13 +897,24 @@ Meça a cobertura:
 python -m pytest --cov=src --cov-report=term-missing -q
 ```
 
+O projeto adota inicialmente uma cobertura mínima de 34%. Esse limite transforma
+a medição atual em uma proteção automática: o comando falhará caso uma mudança
+reduza a cobertura. O percentual será elevado gradualmente com os próximos testes
+de integração com o Excel.
+
 Os testes verificam:
 
 - abas renomeadas;
 - colunas movidas;
 - aliases;
 - combinação de fatores de risco;
-- ordenação determinística.
+- ordenação determinística;
+- leitura, duplicidade e ausência de políticas;
+- cálculos com datas seriais e valores inválidos;
+- descoberta segura da planilha de entrada;
+- criação de backup e nomes de saída;
+- leitura de configurações e mensagens de erro;
+- criação e substituição segura dos handlers de log.
 
 ---
 

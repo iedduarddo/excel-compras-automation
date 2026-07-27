@@ -7,7 +7,7 @@ requires-python = ">=3.11,<3.15"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --basetemp=.pytest_tmp"
 
 [tool.ruff]
 target-version = "py311"
@@ -31,6 +31,8 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
+# Datas seriais do Excel não carregam fuso horário por definição.
+"tests/test_policies.py" = ["DTZ001"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -44,3 +46,4 @@ source = ["src"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 34

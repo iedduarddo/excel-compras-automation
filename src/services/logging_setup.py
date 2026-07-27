@@ -11,7 +11,9 @@ def configure_logging(log_file: Path, verbose: bool = False) -> logging.Logger:
 
     logger = logging.getLogger("excel_compras_automation")
     logger.setLevel(logging.DEBUG)
-    logger.handlers.clear()
+    for existing_handler in tuple(logger.handlers):
+        logger.removeHandler(existing_handler)
+        existing_handler.close()
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
