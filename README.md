@@ -725,10 +725,14 @@ ExcelComprasAutomation/
 │   │   ├── exceptions.py
 │   │   └── models.py
 │   ├── excel/
+│   │   ├── _writer_common.py
 │   │   ├── detection.py
 │   │   ├── excel_desktop.py
 │   │   ├── validation.py
-│   │   └── workbook_writer.py
+│   │   ├── workbook_writer.py
+│   │   ├── writer_base.py
+│   │   ├── writer_responses.py
+│   │   └── writer_support.py
 │   ├── services/
 │   │   ├── files.py
 │   │   ├── logging_setup.py
@@ -747,6 +751,26 @@ ExcelComprasAutomation/
 
 O `main.py` da raiz é apenas um atalho. A orquestração está em
 `src/core/engine.py`.
+
+## Organização interna do escritor
+
+Desde a versão 1.3.0, `src/excel/workbook_writer.py` permanece como a fachada
+estável usada pelo restante do sistema. Assim, o `AutomationEngine` continua
+chamando as mesmas operações públicas enquanto a implementação fica distribuída
+em módulos menores:
+
+- `_writer_common.py`: constantes visuais e helpers compartilhados para células,
+  intervalos, referências e estilos;
+- `writer_base.py`: colunas derivadas, fórmulas, tabela e formatação condicional
+  da base de viagens;
+- `writer_support.py`: aba oculta de apoio, premissas, agregações auxiliares e
+  fonte estática da Tabela Dinâmica;
+- `writer_responses.py`: indicadores, cinco prioridades, área do resumo,
+  fallback e gráfico.
+
+Esses módulos são detalhes internos e ainda podem evoluir. Novas integrações
+devem importar as operações de `workbook_writer.py`, evitando dependência direta
+dos módulos especializados.
 
 ---
 
@@ -884,7 +908,7 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado na versão 1.2.0: 90 testes aprovados, sem falhas ou erros.
+Resultado esperado na versão 1.3.0: 92 testes aprovados, sem falhas ou erros.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -904,8 +928,8 @@ Meça a cobertura:
 python -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na versão 1.2.0, os 90 testes alcançam
-cobertura total de 91,58%, com medição de branches habilitada. O comando falhará
+O projeto exige cobertura mínima de 90%. Na versão 1.3.0, os 92 testes alcançam
+cobertura total de 91,73%, com medição de branches habilitada. O comando falhará
 se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
@@ -922,10 +946,10 @@ formatação e roda os testes com cobertura mínima de 90%.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. A regressão da versão
-1.2.0 foi aprovada nesse ambiente, sem alterações nas regras de negócio, nas
-fórmulas ou no arquivo final gerado. O CI valida as regras de negócio e os
-componentes que não dependem da interface do Excel.
+localmente em um computador Windows com Excel instalado. Na versão 1.3.0, as
+regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
+de fórmula. O CI valida as regras de negócio e os componentes que não dependem
+da interface do Excel.
 
 ## Governança da branch principal
 
@@ -940,7 +964,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os 90 testes automatizados verificam:
+Os 92 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -955,6 +979,7 @@ Os 90 testes automatizados verificam:
 - criação e substituição segura dos handlers de log;
 - orquestração do motor e comportamento da interface de linha de comando;
 - escrita, fallback e validação final do arquivo;
+- compatibilidade da fachada após a decomposição interna do escritor;
 - ciclo de vida da integração com o Excel Desktop usando simulações isoladas.
 
 ---

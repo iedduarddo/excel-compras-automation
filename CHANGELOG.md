@@ -8,9 +8,29 @@ com versionamento semântico.
 
 ### Planejado
 
-- separar o escritor da planilha em componentes menores;
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
+
+## 1.3.0 — 2026-07-28
+
+### Adicionado
+
+- módulos especializados `_writer_common.py`, `writer_base.py`,
+  `writer_support.py` e `writer_responses.py`;
+- testes de compatibilidade da fachada e de caracterização do pipeline de escrita.
+
+### Alterado
+
+- `workbook_writer.py` transformado em fachada estável para preservar o contrato
+  usado pelo Engine enquanto a implementação fica dividida por responsabilidade.
+
+### Validado
+
+- 92 testes aprovados, com cobertura total de 91,73%;
+- CI aprovado no Windows com Python 3.11 e Python 3.14;
+- regressões dos modos nativo e fallback aprovadas com 40 solicitações e 0 erros
+  de fórmula;
+- regras de negócio, fórmulas e resultado final preservados após a decomposição.
 
 ## 1.2.0 — 2026-07-28
 
