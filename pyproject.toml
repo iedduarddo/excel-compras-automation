@@ -1,6 +1,6 @@
 [project]
 name = "excel-compras-automation"
-version = "1.2.0"
+version = "1.3.0"
 description = "Automação do teste prático de Excel para Analista de Compras."
 requires-python = ">=3.11,<3.15"
 
