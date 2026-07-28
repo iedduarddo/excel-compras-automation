@@ -6,8 +6,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from src import __version__
 from src.core.engine import AutomationEngine
 from src.core.exceptions import AutomationError
+from src.services.diagnostics import format_diagnostic_report, run_diagnostics
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,6 +45,20 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Mostra informações técnicas adicionais no terminal.",
     )
+    parser.add_argument(
+        "--diagnostico",
+        "--diagnostic",
+        dest="diagnostic",
+        action="store_true",
+        help=(
+            "Verifica o ambiente e a estrutura da entrada sem criar backup ou saída."
+        ),
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     return parser
 
 
@@ -50,6 +66,11 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     try:
+        if args.diagnostic:
+            report = run_diagnostics(args.input)
+            print(format_diagnostic_report(report))
+            return report.exit_code
+
         candidate_name = args.candidate_name
         if not candidate_name:
             candidate_name = input("Digite seu nome completo: ").strip()

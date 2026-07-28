@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 import src.main as main_module
+from src import __version__
 from src.core.exceptions import AutomationError
 from src.core.models import RunResult
+from src.services.diagnostics import (
+    DiagnosticItem,
+    DiagnosticReport,
+    DiagnosticStatus,
+)
 
 
 def make_result(tmp_path: Path, *, native: bool = False) -> RunResult:
@@ -32,6 +39,7 @@ def test_build_parser_maps_all_command_line_options() -> None:
             "Carlos Eduardo",
             "--sem-pivot-nativo",
             "--verbose",
+            "--diagnostic",
         ]
     )
 
@@ -39,6 +47,7 @@ def test_build_parser_maps_all_command_line_options() -> None:
     assert args.candidate_name == "Carlos Eduardo"
     assert args.sem_pivot_nativo is True
     assert args.verbose is True
+    assert args.diagnostic is True
 
 
 def test_main_runs_engine_and_prints_native_result(
@@ -133,3 +142,90 @@ def test_main_handles_keyboard_interrupt_during_prompt(
 
     assert exit_code == 130
     assert "cancelada pelo usuário" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("option", ["--diagnostico", "--diagnostic"])
+def test_main_runs_diagnostic_without_prompt_or_engine(
+    option: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    received: dict[str, object] = {}
+    prompt = Mock(side_effect=AssertionError("não deve solicitar nome"))
+
+    class ForbiddenEngine:
+        def __init__(self) -> None:
+            raise AssertionError("não deve iniciar o engine")
+
+    report = DiagnosticReport(
+        (
+            DiagnosticItem("Python", DiagnosticStatus.OK, "suportado"),
+            DiagnosticItem("Excel Desktop", DiagnosticStatus.WARNING, "fallback"),
+        )
+    )
+
+    def diagnose(input_value: object) -> DiagnosticReport:
+        received["input"] = input_value
+        return report
+
+    monkeypatch.setattr("builtins.input", prompt)
+    monkeypatch.setattr(main_module, "AutomationEngine", ForbiddenEngine)
+    monkeypatch.setattr(main_module, "run_diagnostics", diagnose)
+
+    exit_code = main_module.main([option, "--input", "entrada.xlsx"])
+
+    assert exit_code == 0
+    assert received == {"input": Path("entrada.xlsx")}
+    prompt.assert_not_called()
+    output = capsys.readouterr().out
+    assert "[OK] Python" in output
+    assert "[AVISO] Excel Desktop" in output
+    assert "AMBIENTE PRONTO" in output
+
+
+def test_main_returns_one_when_diagnostic_has_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    report = DiagnosticReport(
+        (DiagnosticItem("Entrada", DiagnosticStatus.ERROR, "ausente"),)
+    )
+    monkeypatch.setattr(main_module, "run_diagnostics", lambda _: report)
+
+    exit_code = main_module.main(["--diagnostico"])
+
+    assert exit_code == 1
+    assert "AMBIENTE REQUER ATENÇÃO" in capsys.readouterr().out
+
+
+def test_version_uses_package_metadata_without_prompt_or_engine(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prompt = Mock(side_effect=AssertionError("não deve solicitar nome"))
+
+    class ForbiddenEngine:
+        def __init__(self) -> None:
+            raise AssertionError("não deve iniciar o engine")
+
+    monkeypatch.setattr("builtins.input", prompt)
+    monkeypatch.setattr(main_module, "AutomationEngine", ForbiddenEngine)
+
+    with pytest.raises(SystemExit) as error:
+        main_module.main(["--version"])
+
+    assert error.value.code == 0
+    assert __version__ in capsys.readouterr().out
+    prompt.assert_not_called()
+
+
+def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
+    script = (Path(__file__).parents[1] / "run.ps1").read_text(encoding="utf-8")
+
+    assert '[Alias("Diagnostic")]' in script
+    assert "[switch]$Diagnostico" in script
+    assert "[switch]$Version" in script
+    assert '$PythonArguments += "--diagnostico"' in script
+    assert '$PythonArguments += "--version"' in script
+    assert "-not $Diagnostico -and -not $Version" in script
+    assert "exit $LASTEXITCODE" in script

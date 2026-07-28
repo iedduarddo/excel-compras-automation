@@ -64,6 +64,23 @@ Se o PowerShell bloquear também o segundo comando:
 powershell -ExecutionPolicy Bypass -File .\run.ps1 -NomeCompleto "Maria Aparecida da Silva"
 ```
 
+Para verificar o ambiente e a estrutura da planilha sem pedir nome e sem criar
+backup, saída ou log:
+
+```powershell
+.\run.ps1 -Diagnostico
+```
+
+`-Diagnostic` é um alias equivalente. O comando mostra `[OK]`, `[AVISO]` ou
+`[ERRO]` para cada verificação. Avisos não impedem o status `AMBIENTE PRONTO`;
+erros resultam em `AMBIENTE REQUER ATENÇÃO` e código de saída 1.
+
+Para consultar a versão instalada:
+
+```powershell
+.\run.ps1 -Version
+```
+
 ---
 
 # 1. O que você precisa antes de começar
