@@ -11,6 +11,24 @@ com versionamento semântico.
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
 
+## 1.4.0 — 2026-07-28
+
+### Adicionado
+
+- diagnóstico somente leitura por `--diagnostico` ou `--diagnostic`, sem
+  solicitação de nome e sem criação de backup, saída ou log;
+- verificações da versão do Python, configurações, planilha de entrada, abas
+  obrigatórias e disponibilidade da integração pywin32;
+- consulta da versão instalada por `--version`;
+- opções equivalentes `-Diagnostico`, `-Diagnostic` e `-Version` no `run.ps1`,
+  com propagação do código de saída.
+
+### Validado
+
+- 108 testes aprovados, com cobertura total de 91,76%;
+- Ruff aprovado para análise estática e formatação;
+- diagnóstico fecha a planilha inspecionada e não inicia o Excel Desktop.
+
 ## 1.3.0 — 2026-07-28
 
 ### Adicionado
