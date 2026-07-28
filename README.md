@@ -701,6 +701,7 @@ Depois salve.
 ```text
 ExcelComprasAutomation/
 ├── .github/
+│   ├── pull_request_template.md
 │   └── workflows/
 │       └── ci.yml
 ├── .vscode/
@@ -735,6 +736,7 @@ ExcelComprasAutomation/
 │   ├── main.py
 │   └── settings.py
 ├── tests/
+├── CONTRIBUTING.md
 ├── main.py
 ├── pyproject.toml
 ├── README.md
@@ -924,6 +926,19 @@ isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo valida
 localmente em um computador Windows com Excel instalado. O CI valida as regras
 de negócio e os componentes que não dependem da interface do Excel.
 
+## Governança da branch principal
+
+A branch `main` é protegida. Toda mudança deve passar por um Pull Request com:
+
+- branch atualizada em relação à `main`;
+- checks `Python 3.11` e `Python 3.14` aprovados;
+- todas as conversas resolvidas;
+- bloqueio de force push e exclusão da branch.
+
+Como este é um projeto individual, nenhuma aprovação externa é obrigatória. O
+fluxo completo de desenvolvimento, validação e merge está documentado em
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 Os testes verificam:
 
 - abas renomeadas;
@@ -1102,6 +1117,7 @@ Consulte o guia completo:
 
 # Documentação adicional
 
+- [Como contribuir](CONTRIBUTING.md)
 - [Arquitetura](docs/ARQUITETURA.md)
 - [Regras de negócio](docs/REGRAS_DE_NEGOCIO.md)
 - [Adaptação para outras planilhas](docs/ADAPTAR_OUTRAS_PLANILHAS.md)
