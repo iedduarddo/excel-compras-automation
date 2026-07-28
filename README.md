@@ -64,6 +64,30 @@ Se o PowerShell bloquear também o segundo comando:
 powershell -ExecutionPolicy Bypass -File .\run.ps1 -NomeCompleto "Maria Aparecida da Silva"
 ```
 
+Para verificar o ambiente e a estrutura da planilha sem pedir nome e sem criar
+backup, saída ou log:
+
+```powershell
+.\run.ps1 -Diagnostico
+```
+
+`-Diagnostic` é um alias equivalente. O comando mostra `[OK]`, `[AVISO]` ou
+`[ERRO]` para cada verificação. Avisos não impedem o status `AMBIENTE PRONTO`;
+erros resultam em `AMBIENTE REQUER ATENÇÃO` e código de saída 1.
+
+Para consultar a versão instalada:
+
+```powershell
+.\run.ps1 -Version
+```
+
+Os mesmos recursos estão disponíveis diretamente pela interface Python:
+
+```powershell
+.\.venv\Scripts\python.exe -m src.main --diagnostico
+.\.venv\Scripts\python.exe -m src.main --version
+```
+
 ---
 
 # 1. O que você precisa antes de começar
@@ -734,6 +758,7 @@ ExcelComprasAutomation/
 │   │   ├── writer_responses.py
 │   │   └── writer_support.py
 │   ├── services/
+│   │   ├── diagnostics.py
 │   │   ├── files.py
 │   │   ├── logging_setup.py
 │   │   └── text.py
@@ -908,7 +933,7 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado na versão 1.3.0: 92 testes aprovados, sem falhas ou erros.
+Resultado esperado na versão 1.4.0: 108 testes aprovados, sem falhas ou erros.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -928,8 +953,8 @@ Meça a cobertura:
 python -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na versão 1.3.0, os 92 testes alcançam
-cobertura total de 91,73%, com medição de branches habilitada. O comando falhará
+O projeto exige cobertura mínima de 90%. Na versão 1.4.0, os 108 testes alcançam
+cobertura total de 91,76%, com medição de branches habilitada. O comando falhará
 se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
@@ -946,7 +971,7 @@ formatação e roda os testes com cobertura mínima de 90%.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. Na versão 1.3.0, as
+localmente em um computador Windows com Excel instalado. Na versão 1.4.0, as
 regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
 de fórmula. O CI valida as regras de negócio e os componentes que não dependem
 da interface do Excel.
@@ -964,7 +989,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os 92 testes automatizados verificam:
+Os 108 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -978,6 +1003,7 @@ Os 92 testes automatizados verificam:
 - leitura de configurações e mensagens de erro;
 - criação e substituição segura dos handlers de log;
 - orquestração do motor e comportamento da interface de linha de comando;
+- diagnóstico somente leitura, códigos de saída e consulta de versão;
 - escrita, fallback e validação final do arquivo;
 - compatibilidade da fachada após a decomposição interna do escritor;
 - ciclo de vida da integração com o Excel Desktop usando simulações isoladas.

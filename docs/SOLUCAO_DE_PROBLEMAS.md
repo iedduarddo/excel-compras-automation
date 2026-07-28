@@ -2,7 +2,30 @@
 
 ## Diagnóstico básico
 
-Execute, na raiz:
+Execute, na raiz do projeto:
+
+```powershell
+.\run.ps1 -Diagnostico
+```
+
+O diagnóstico não pede nome e não cria backup, arquivo de saída ou log. Ele
+verifica a versão do Python, as configurações, a entrada e as abas obrigatórias.
+`[AVISO]` indica que o modo alternativo continua disponível; somente `[ERRO]`
+faz o comando terminar com código 1.
+
+Também é possível usar o alias em inglês:
+
+```powershell
+.\run.ps1 -Diagnostic
+```
+
+Consulte a versão do programa com:
+
+```powershell
+.\run.ps1 -Version
+```
+
+Se o ambiente virtual ainda não existir, faça as verificações manuais:
 
 ```powershell
 Get-Location
@@ -133,4 +156,3 @@ python -m src.main --nome "SEU NOME COMPLETO" --verbose
 ```
 
 Não publique logs sem revisar caminhos e nomes de arquivos.
-
