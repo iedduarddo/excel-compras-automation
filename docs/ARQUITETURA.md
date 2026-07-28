@@ -54,8 +54,35 @@ Aplica os pesos de `config/rules.json`, cria justificativas e ordena riscos.
 
 ### `src/excel/workbook_writer.py`
 
-Escreve fórmulas, formatação condicional, indicadores, análise das cinco
-prioridades e o resumo de compatibilidade.
+É a fachada estável da escrita do Excel. O `AutomationEngine` continua
+importando dela as operações públicas para abrir a origem, preparar a base,
+criar a aba de apoio, escrever fórmulas e respostas, gerar o fallback, aplicar
+formatação e configurar o recálculo.
+
+A separação interna abaixo está em andamento para a v1.3 e não muda esse
+contrato público. Código externo ao pacote `src.excel` deve depender da fachada,
+e não dos módulos especializados.
+
+### `src/excel/_writer_common.py`
+
+Centraliza constantes visuais e helpers compartilhados para endereços de
+células, intervalos absolutos, nomes de abas e estilos. O prefixo `_` indica que
+é um detalhe interno, sujeito a mudanças durante a evolução da arquitetura.
+
+### `src/excel/writer_base.py`
+
+Cuida da estrutura da base de viagens: cria ou reaproveita colunas derivadas,
+estende a tabela, escreve as fórmulas auditáveis e aplica formatação condicional.
+
+### `src/excel/writer_support.py`
+
+Cria novamente a aba oculta `Apoio_Automacao`, registra pesos e limites, monta
+agregações auxiliares e prepara a fonte estática usada pela PivotTable nativa.
+
+### `src/excel/writer_responses.py`
+
+Preenche os indicadores, escreve e formata as solicitações prioritárias, reserva
+a área da Tabela Dinâmica e gera o resumo com gráfico usado como fallback.
 
 ### `src/excel/excel_desktop.py`
 
@@ -82,6 +109,8 @@ Contém operações reutilizáveis de arquivo, log e texto.
 - Pesos ficam fora do código.
 - O score é reproduzido em Python e no Excel.
 - O fallback mantém o projeto executável fora do Excel Desktop.
+- O Engine depende da fachada `workbook_writer.py`; os módulos `writer_*` ficam
+  encapsulados como detalhes da camada de Excel.
 
 ## Evolução sugerida
 

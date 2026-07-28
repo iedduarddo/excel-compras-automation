@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from hashlib import sha256
+from inspect import signature
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -356,3 +358,150 @@ def test_writer_search_and_reference_helpers_cover_fallbacks() -> None:
     assert _quoted_sheet("O'Brien") == "'O''Brien'"
     assert _absolute_range("O'Brien", 28, 2, 10) == "'O''Brien'!$AB$2:$AB$10"
     assert _cell(28, 10) == "AB10"
+
+
+def test_writer_public_api_signatures_are_stable() -> None:
+    expected = {
+        "load_source_workbook": "(path: 'Path') -> 'Workbook'",
+        "ensure_derived_columns": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "last_row: 'int') -> 'WorkbookLayout'"
+        ),
+        "create_support_sheet": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "travels: 'list[TravelResult]', rules: 'dict[str, object]', "
+            "last_row: 'int') -> 'dict[str, str]'"
+        ),
+        "write_base_formulas": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "policies: 'dict[str, Policy]', support_refs: 'dict[str, str]', "
+            "last_row: 'int') -> 'None'"
+        ),
+        "write_responses": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "aliases: 'dict[str, object]', travels: 'list[TravelResult]', "
+            "support_refs: 'dict[str, str]', last_row: 'int', "
+            "top_quantity: 'int') -> 'int'"
+        ),
+        "create_fallback_summary_and_chart": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "travels: 'list[TravelResult]', pivot_start_row: 'int', "
+            "last_row: 'int') -> 'None'"
+        ),
+        "apply_conditional_formatting": (
+            "(workbook: 'Workbook', layout: 'WorkbookLayout', "
+            "last_row: 'int') -> 'None'"
+        ),
+        "finalize_workbook": "(workbook: 'Workbook') -> 'None'",
+    }
+
+    actual = {name: str(signature(getattr(writer, name))) for name in expected}
+
+    assert actual == expected
+
+
+def test_writer_formula_and_layout_contract_is_stable() -> None:
+    workbook, layout, travels, policies, aliases, rules = make_writer_fixture()
+    try:
+        layout = ensure_derived_columns(workbook, layout, last_row=3)
+        support_refs = create_support_sheet(
+            workbook,
+            layout,
+            travels,
+            rules,
+            last_row=3,
+        )
+        write_base_formulas(
+            workbook,
+            layout,
+            policies,
+            support_refs,
+            last_row=3,
+        )
+        pivot_start_row = write_responses(
+            workbook,
+            layout,
+            aliases,
+            travels,
+            support_refs,
+            last_row=3,
+            top_quantity=5,
+        )
+        apply_conditional_formatting(workbook, layout, last_row=3)
+        create_fallback_summary_and_chart(
+            workbook,
+            layout,
+            travels,
+            pivot_start_row,
+            last_row=3,
+        )
+        finalize_workbook(workbook)
+
+        base = workbook[layout.base.title]
+        responses = workbook[layout.responses.title]
+        formula_cells = [f"{column}{row}" for row in (2, 3) for column in "MNOPQRS"]
+        formula_hashes = {
+            cell: sha256(base[cell].value.encode("utf-8")).hexdigest()
+            for cell in formula_cells
+        }
+        indicator_hashes = {
+            f"B{row}": sha256(responses.cell(row, 2).value.encode("utf-8")).hexdigest()
+            for row in range(2, 12)
+        }
+
+        assert formula_hashes == {
+            "M2": "515c398a6c1931fdb83e767cbadb64b06df351fdf1871b1abf7ffabd9e4feb0b",
+            "N2": "2fcd1e2a13adb4e0ba820ce106bc1414f0b14be0ccd2b4d1143ace638bc57b90",
+            "O2": "ada120a0e6b2987cebf95756449c84f8ba94cf039aa50445ad86405ba45de933",
+            "P2": "c14a5cfb69e5377955ce57d7cb35a430cc247ed5379ebdf206f23beacb1cf2b0",
+            "Q2": "29d5fee7de153fa79447287392bf81fde1be2e99d555dbc88604f10a2c9ffc57",
+            "R2": "41e7f1c345b68cfb4537b74326a2196f021c4093f9c79dfb5d028519a7e5f84e",
+            "S2": "1f84d0b098bb35937b2f4d4c77890fd0a0c095a473037b5949351c5537c749ad",
+            "M3": "aac759ebf1406a0fe1c77358aeeb70bae31c98af7badc19533f65513a2b61a25",
+            "N3": "a88ba3e8201565c1322b56002407484a2195a8107036ede512101c9211157525",
+            "O3": "e0c418cf6efeb4abd00b1ee86fc3332d7b85ea738a169b5d692a6996bc0bfc12",
+            "P3": "80cc3b4b1a47c4affb18e51a43207986662ad686d075a804b9fa440660415ee8",
+            "Q3": "2b41b5ecd576b324f3000bfe1b271c6c8e5066edddb60bd05712a6670ac903d6",
+            "R3": "255c2c8dcbc93a066d267fd5549f39a05b622fc35edb4616ad1ac6eaad9e4223",
+            "S3": "8272002eefaf22ba1d334660f0b043355f583b6d48649dc158a7ab8161007735",
+        }
+        assert indicator_hashes == {
+            "B2": "09895058db1b806084f402d972c47c7532c86f352f73f6203acd7464c780fc65",
+            "B3": "36ec3a5f14de5f55d7e8a11f46ce68e84846ab03e0eb8372d538a70da594c47c",
+            "B4": "4f0274fd762be2a68035dd7e1832c80613aad9ba4d297bf0d5820c0f3f1ba6a9",
+            "B5": "df06e1aef8bd182d15b1cbf950557715addc76c11ed946d9a7b1803b36b8ef6e",
+            "B6": "8dfc0a8e974e87791a0d100e6f286b01c61b47f297b3a8aae3f4dc8f0256a492",
+            "B7": "266123f8440331e491635d22dc7944fd8b9e4a1a56c03bafe569d73e9ebeab25",
+            "B8": "fbbcb3d9c3e9368ba70441548bae029e11e04e60855397adb23163cbb157f94b",
+            "B9": "97a3a33e06bb6de2f6437a287c0c484905f6be8c2a48f8c17e34f1c8cb55a071",
+            "B10": "769134e0293633e3141e7f0b39fa18c56277b73527fbd29c04487a5cce1c3d3b",
+            "B11": "4ea8a7a434d9ea4f7c9598047f0febd35959ec73ecad688827df40eb11b70fd4",
+        }
+
+        conditional_formats = {
+            str(cell_range.sqref): [
+                (rule.type, tuple(rule.formula or [])) for rule in format_rules
+            ]
+            for cell_range, format_rules in base.conditional_formatting._cf_rules.items()
+        }
+        assert conditional_formats == {
+            "A2:R3": [("expression", ('$R2="Crítica"',))],
+            "P2:Q3": [("expression", ('$P2="Fora"',))],
+        }
+
+        chart = responses._charts[0]
+        assert pivot_start_row == 27
+        assert [series.val.numRef.f for series in chart.ser] == [
+            "'Respostas'!$B$28:$B$29",
+            "'Respostas'!$C$28:$C$29",
+        ]
+        assert [series.cat.numRef.f for series in chart.ser] == [
+            "'Respostas'!$A$28:$A$29",
+            "'Respostas'!$A$28:$A$29",
+        ]
+        assert sorted(str(item) for item in responses.merged_cells.ranges) == [
+            "A25:H25",
+            "A26:F26",
+        ]
+    finally:
+        workbook.close()

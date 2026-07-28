@@ -725,10 +725,14 @@ ExcelComprasAutomation/
 │   │   ├── exceptions.py
 │   │   └── models.py
 │   ├── excel/
+│   │   ├── _writer_common.py
 │   │   ├── detection.py
 │   │   ├── excel_desktop.py
 │   │   ├── validation.py
-│   │   └── workbook_writer.py
+│   │   ├── workbook_writer.py
+│   │   ├── writer_base.py
+│   │   ├── writer_responses.py
+│   │   └── writer_support.py
 │   ├── services/
 │   │   ├── files.py
 │   │   ├── logging_setup.py
@@ -747,6 +751,27 @@ ExcelComprasAutomation/
 
 O `main.py` da raiz é apenas um atalho. A orquestração está em
 `src/core/engine.py`.
+
+## Organização interna do escritor
+
+Na evolução de arquitetura em andamento para a v1.3,
+`src/excel/workbook_writer.py`
+permanece como a fachada estável usada pelo restante do sistema. Assim, o
+`AutomationEngine` continua chamando as mesmas operações públicas enquanto a
+implementação é distribuída em módulos menores:
+
+- `_writer_common.py`: constantes visuais e helpers compartilhados para células,
+  intervalos, referências e estilos;
+- `writer_base.py`: colunas derivadas, fórmulas, tabela e formatação condicional
+  da base de viagens;
+- `writer_support.py`: aba oculta de apoio, premissas, agregações auxiliares e
+  fonte estática da Tabela Dinâmica;
+- `writer_responses.py`: indicadores, cinco prioridades, área do resumo,
+  fallback e gráfico.
+
+Esses módulos são detalhes internos e ainda podem evoluir. Novas integrações
+devem importar as operações de `workbook_writer.py`, evitando dependência direta
+dos módulos especializados.
 
 ---
 
