@@ -1,6 +1,6 @@
 [project]
 name = "excel-compras-automation"
-version = "1.1.0"
+version = "1.2.0"
 description = "Automação do teste prático de Excel para Analista de Compras."
 requires-python = ">=3.11,<3.15"
 
@@ -46,4 +46,4 @@ source = ["src"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 34
+fail_under = 90

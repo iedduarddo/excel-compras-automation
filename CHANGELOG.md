@@ -8,11 +8,38 @@ com versionamento semântico.
 
 ### Planejado
 
-- ampliar os testes de regressão e integração;
 - separar o escritor da planilha em componentes menores;
-- fortalecer a validação de configurações e artefatos do Excel;
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
+
+## 1.2.0 — 2026-07-28
+
+### Adicionado
+
+- suíte ampliada de regressão para linha de comando, engine, integração simulada
+  com o Excel Desktop, detecção, prioridades, validação e escrita da planilha;
+- testes dos caminhos de sucesso e falha da validação do arquivo final;
+- testes de indicadores movidos, limites de varredura, colisões de abas e
+  estruturas incompletas.
+
+### Alterado
+
+- cobertura mínima obrigatória elevada de 34% para 90%.
+
+### Corrigido
+
+- fechamento garantido dos workbooks abertos durante a validação final;
+- mensagens claras para valores cacheados inválidos;
+- validação explícita da existência e ocultação da aba `Apoio_Automacao`;
+- tratamento da interrupção pelo usuário durante a solicitação do nome.
+
+### Validado
+
+- 90 testes aprovados, com cobertura total de 91,58%;
+- regressão completa aprovada no Windows com Excel Desktop: 40 solicitações,
+  nenhuma fórmula inválida, Tabela Dinâmica nativa, gráfico, quatro regras de
+  formatação condicional e planilha de suporte oculta;
+- regras de negócio, fórmulas e resultado final da planilha preservados.
 
 ## 1.1.0 — 2026-07-28
 

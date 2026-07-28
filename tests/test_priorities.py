@@ -1,6 +1,12 @@
 from datetime import date
 
-from src.business.priorities import apply_priority_scores, rank_immediate_requests
+from src.business.priorities import (
+    _currency,
+    _days,
+    _deduplicate,
+    apply_priority_scores,
+    rank_immediate_requests,
+)
 from src.core.models import TravelResult
 from src.settings import load_rules
 
@@ -65,3 +71,67 @@ def test_ranking_is_deterministic() -> None:
     ranked = rank_immediate_requests([first, second], quantity=2)
 
     assert [item.request_id for item in ranked] == ["VIA-001", "VIA-002"]
+
+
+def test_pending_executive_and_missing_policy_are_explained() -> None:
+    travel = make_travel(
+        "PENDENTE",
+        card="Pendente",
+        criticality="Executivo",
+        status="Revisar",
+    )
+    travel.booking_status = "Pendente"
+
+    apply_priority_scores([travel], load_rules())
+
+    assert travel.priority == "Crítica"
+    assert travel.score > 75
+    assert "cartão corporativo pendente" in travel.reasons
+    assert "viagem executiva" in travel.reasons
+    assert "política do serviço não localizada" in travel.reasons
+    assert "reserva pendente" in travel.reasons
+    assert any(
+        "regularizar o cartão" in action for action in travel.recommended_actions
+    )
+    assert any(
+        "cadastro da política" in action for action in travel.recommended_actions
+    )
+
+
+def test_other_card_issue_and_reschedule_create_high_priority() -> None:
+    travel = make_travel("REMARCACAO", card="Bloqueado")
+    travel.booking_status = "Remarcação"
+
+    apply_priority_scores([travel], load_rules())
+
+    assert travel.priority == "Alta"
+    assert travel.score == 40.0
+    assert "cartão com status Bloqueado" in travel.reasons
+    assert "reserva em remarcação" in travel.reasons
+
+
+def test_outside_policy_by_lead_time_uses_singular_day() -> None:
+    travel = make_travel(
+        "PRAZO",
+        status="Fora",
+        difference=0,
+        lead_days=1,
+        min_days=2,
+    )
+
+    apply_priority_scores([travel], load_rules())
+
+    assert travel.priority == "Alta"
+    assert travel.score == 50.0
+    assert travel.reasons == ["antecedência de 1 dia (mínimo 2 dias)"]
+    assert any("emitir com urgência" in action for action in travel.recommended_actions)
+
+
+def test_formatting_and_deduplication_helpers() -> None:
+    assert _currency(1234.5) == "R$ 1.234,50"
+    assert _days(1) == "1 dia"
+    assert _days(0) == "0 dias"
+    assert _deduplicate(["Ação", " acao ", "", "Outra", "outra"]) == [
+        "Ação",
+        "Outra",
+    ]

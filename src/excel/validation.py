@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from zipfile import ZipFile
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.cell.cell import Cell
 
 from src.core.exceptions import ValidationError
 from src.core.models import TravelResult, WorkbookLayout
@@ -20,6 +21,7 @@ FORMULA_ERRORS = {
     "#NUM!",
     "#NULL!",
 }
+SUPPORT_SHEET = "Apoio_Automacao"
 
 
 def validate_output(
@@ -39,13 +41,43 @@ def validate_output(
         read_only=False,
         keep_vba=output_file.suffix.casefold() == ".xlsm",
     )
-    value_workbook = load_workbook(
-        output_file,
-        data_only=True,
-        read_only=False,
-        keep_vba=output_file.suffix.casefold() == ".xlsm",
-    )
+    value_workbook: Workbook | None = None
+    try:
+        value_workbook = load_workbook(
+            output_file,
+            data_only=True,
+            read_only=False,
+            keep_vba=output_file.suffix.casefold() == ".xlsm",
+        )
+        return _validate_loaded_workbooks(
+            output_file=output_file,
+            formula_workbook=formula_workbook,
+            value_workbook=value_workbook,
+            layout=layout,
+            aliases=aliases,
+            travels=travels,
+            last_row=last_row,
+            native_pivot_expected=native_pivot_expected,
+            cached_values_expected=cached_values_expected,
+        )
+    finally:
+        if value_workbook is not None:
+            value_workbook.close()
+        formula_workbook.close()
 
+
+def _validate_loaded_workbooks(
+    *,
+    output_file: Path,
+    formula_workbook: Workbook,
+    value_workbook: Workbook,
+    layout: WorkbookLayout,
+    aliases: dict[str, object],
+    travels: list[TravelResult],
+    last_row: int,
+    native_pivot_expected: bool,
+    cached_values_expected: bool,
+) -> dict[str, object]:
     base_formula = formula_workbook[layout.base.title]
     base_values = value_workbook[layout.base.title]
     response_formula = formula_workbook[layout.responses.title]
@@ -102,12 +134,12 @@ def validate_output(
     if cached_values_expected:
         calculated_total = round(
             sum(
-                float(
+                _cell_number(
                     base_values.cell(
                         row,
                         layout.base.columns["total_value"],
-                    ).value
-                    or 0
+                    ),
+                    description="Valor Total",
                 )
                 for row in range(first_row, last_row + 1)
             ),
@@ -120,11 +152,16 @@ def validate_output(
             )
 
         total_indicator_row = indicator_rows["total_travel_value"][0]
-        total_indicator = response_values.cell(total_indicator_row, answer_column).value
-        if (
-            total_indicator is None
-            or abs(float(total_indicator) - expected_total) > 0.01
-        ):
+        total_indicator_cell = response_values.cell(
+            total_indicator_row,
+            answer_column,
+        )
+        total_indicator = _cell_number(
+            total_indicator_cell,
+            description="Indicador de valor total",
+            allow_empty=False,
+        )
+        if abs(total_indicator - expected_total) > 0.01:
             raise ValidationError(
                 "O indicador de valor total não confere com a base de viagens."
             )
@@ -150,6 +187,12 @@ def validate_output(
             "As regras de formatação condicional não foram encontradas."
         )
 
+    if SUPPORT_SHEET not in formula_workbook.sheetnames:
+        raise ValidationError("A planilha auxiliar de validação não foi encontrada.")
+    support_sheet_hidden = formula_workbook[SUPPORT_SHEET].sheet_state == "hidden"
+    if not support_sheet_hidden:
+        raise ValidationError("A planilha auxiliar deve permanecer oculta.")
+
     return {
         "travel_rows": len(travels),
         "formula_cells_checked": len(derived_fields) * len(travels),
@@ -159,7 +202,23 @@ def validate_output(
         "conditional_formatting_rules": conditional_rules,
         "pivot_parts": len(pivot_parts),
         "chart_parts": len(chart_parts),
-        "support_sheet_hidden": (
-            formula_workbook["Apoio_Automacao"].sheet_state == "hidden"
-        ),
+        "support_sheet_hidden": support_sheet_hidden,
     }
+
+
+def _cell_number(
+    cell: Cell,
+    *,
+    description: str,
+    allow_empty: bool = True,
+) -> float:
+    value = cell.value
+    if value is None and allow_empty:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError) as error:
+        raise ValidationError(
+            f"{description} inválido em {cell.parent.title}!{cell.coordinate}: "
+            f"{value!r}."
+        ) from error

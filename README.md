@@ -884,7 +884,7 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado: todos os testes aprovados, sem falhas ou erros.
+Resultado esperado na versão 1.2.0: 90 testes aprovados, sem falhas ou erros.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -904,10 +904,9 @@ Meça a cobertura:
 python -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto adota inicialmente uma cobertura mínima de 34%. Esse limite transforma
-a medição atual em uma proteção automática: o comando falhará caso uma mudança
-reduza a cobertura. O percentual será elevado gradualmente com os próximos testes
-de integração com o Excel.
+O projeto exige cobertura mínima de 90%. Na versão 1.2.0, os 90 testes alcançam
+cobertura total de 91,58%, com medição de branches habilitada. O comando falhará
+se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
 
@@ -919,12 +918,14 @@ O arquivo `.github/workflows/ci.yml` executa automaticamente a validação quand
 
 O workflow usa Windows e testa as versões Python 3.11 e 3.14. Em cada versão,
 ele instala as dependências, verifica a sintaxe, executa o Ruff, confere a
-formatação e roda os testes com a cobertura mínima configurada.
+formatação e roda os testes com cobertura mínima de 90%.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. O CI valida as regras
-de negócio e os componentes que não dependem da interface do Excel.
+localmente em um computador Windows com Excel instalado. A regressão da versão
+1.2.0 foi aprovada nesse ambiente, sem alterações nas regras de negócio, nas
+fórmulas ou no arquivo final gerado. O CI valida as regras de negócio e os
+componentes que não dependem da interface do Excel.
 
 ## Governança da branch principal
 
@@ -939,7 +940,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os testes verificam:
+Os 90 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -951,7 +952,10 @@ Os testes verificam:
 - descoberta segura da planilha de entrada;
 - criação de backup e nomes de saída;
 - leitura de configurações e mensagens de erro;
-- criação e substituição segura dos handlers de log.
+- criação e substituição segura dos handlers de log;
+- orquestração do motor e comportamento da interface de linha de comando;
+- escrita, fallback e validação final do arquivo;
+- ciclo de vida da integração com o Excel Desktop usando simulações isoladas.
 
 ---
 

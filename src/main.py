@@ -48,11 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    candidate_name = args.candidate_name
-    if not candidate_name:
-        candidate_name = input("Digite seu nome completo: ").strip()
 
     try:
+        candidate_name = args.candidate_name
+        if not candidate_name:
+            candidate_name = input("Digite seu nome completo: ").strip()
+
         result = AutomationEngine().run(
             input_value=args.input,
             candidate_name=candidate_name,
