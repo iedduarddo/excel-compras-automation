@@ -42,11 +42,27 @@ if ($Help) {
 }
 
 Set-Location -LiteralPath $PSScriptRoot
+$PortableExecutable = Join-Path $PSScriptRoot "ExcelComprasAutomation.exe"
+$PortableMarker = Join-Path $PSScriptRoot "VERSAO.txt"
 $VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$UsePortableExecutable = Test-Path -LiteralPath $PortableExecutable -PathType Leaf
 
-if (-not (Test-Path -LiteralPath $VenvPython -PathType Leaf)) {
+if (
+    -not $UsePortableExecutable -and
+    (Test-Path -LiteralPath $PortableMarker -PathType Leaf)
+) {
     throw (
-        "Ambiente virtual nao encontrado. Execute primeiro: " +
+        "O pacote portatil esta incompleto: ExcelComprasAutomation.exe " +
+        "nao foi encontrado. Extraia novamente o ZIP oficial inteiro."
+    )
+}
+
+if (
+    -not $UsePortableExecutable -and
+    -not (Test-Path -LiteralPath $VenvPython -PathType Leaf)
+) {
+    throw (
+        "Executavel portatil e ambiente virtual nao encontrados. Execute: " +
         "powershell -ExecutionPolicy Bypass -File .\setup.ps1"
     )
 }
@@ -55,18 +71,22 @@ if ($Diagnostico -and $Version) {
     throw "Use apenas um modo por vez: -Diagnostico ou -Version."
 }
 
-$PythonArguments = @("-m", "src.main")
+$ApplicationArguments = @()
+
+if (-not $UsePortableExecutable) {
+    $ApplicationArguments += @("-m", "src.main")
+}
 
 if ($Version) {
-    $PythonArguments += "--version"
+    $ApplicationArguments += "--version"
 }
 else {
     if (-not [string]::IsNullOrWhiteSpace($Arquivo)) {
-        $PythonArguments += @("--input", $Arquivo)
+        $ApplicationArguments += @("--input", $Arquivo)
     }
 
     if ($Diagnostico) {
-        $PythonArguments += "--diagnostico"
+        $ApplicationArguments += "--diagnostico"
     }
     else {
         if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
@@ -77,19 +97,24 @@ else {
             throw "Informe seu nome completo para executar a automacao."
         }
 
-        $PythonArguments += @("--candidate-name", $NomeCompleto.Trim())
+        $ApplicationArguments += @("--candidate-name", $NomeCompleto.Trim())
     }
 
     if ($SemPivotNativo) {
-        $PythonArguments += "--sem-pivot-nativo"
+        $ApplicationArguments += "--sem-pivot-nativo"
     }
 
     if ($Verbose) {
-        $PythonArguments += "--verbose"
+        $ApplicationArguments += "--verbose"
     }
 }
 
-& $VenvPython @PythonArguments
+if ($UsePortableExecutable) {
+    & $PortableExecutable @ApplicationArguments
+}
+else {
+    & $VenvPython @ApplicationArguments
+}
 $ExitCode = $LASTEXITCODE
 
 if ($null -eq $ExitCode) {

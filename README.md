@@ -38,18 +38,33 @@ O arquivo da pasta `input` não é alterado.
 
 # Início rápido
 
-Instale uma versão do Python entre 3.11 e 3.14, extraia o projeto do `.zip` e
-coloque uma única planilha `.xlsx` ou `.xlsm` na pasta `input`. Depois, na pasta
-principal, dê duplo clique em:
+## Pacote portátil para Windows x64
+
+A partir da versão 1.7.0, o caminho recomendado para apenas usar a automação é
+baixar estes dois arquivos na página **Releases** do GitHub:
+
+```text
+ExcelComprasAutomation-vX.Y.Z-windows-x64.zip
+ExcelComprasAutomation-vX.Y.Z-windows-x64.zip.sha256
+```
+
+Confira o SHA-256, extraia todo o ZIP para uma pasta gravável e coloque uma
+única planilha `.xlsx` ou `.xlsm` em `input`. Depois dê duplo clique em:
 
 ```text
 iniciar.cmd
 ```
 
-Na primeira execução, o iniciador cria as pastas operacionais, localiza um Python
-compatível, cria a `.venv` e instala as dependências. Nas próximas execuções, a
-mesma `.venv` é verificada e reutilizada. Quando aberto por duplo clique, o
-iniciador mantém a janela aberta ao final para que as mensagens possam ser lidas.
+Esse pacote já inclui o runtime necessário: não exige instalação de Python,
+criação de `.venv` nem acesso à internet. Mantenha a pasta `_internal` junto do
+executável e não tente executar o programa diretamente dentro do ZIP.
+
+## Execução pelo código-fonte
+
+Se você baixou o código-fonte em vez do pacote portátil, instale uma versão do
+Python entre 3.11 e 3.14. Na primeira execução, `iniciar.cmd` cria as pastas
+operacionais, localiza o Python, cria a `.venv` e instala as dependências. Nas
+próximas execuções, a mesma `.venv` é verificada e reutilizada.
 
 O programa encontra automaticamente a única planilha e solicita o nome completo.
 Se houver mais de uma, ele interrompe a execução, lista as entradas e orienta
@@ -76,8 +91,9 @@ operacionais:
 .\iniciar.cmd -Version
 ```
 
-`-Diagnostic` é um alias equivalente a `-Diagnostico`. Se a `.venv` ainda não
-existir, `iniciar.cmd` prepara o ambiente antes de encaminhar qualquer opção.
+`-Diagnostic` é um alias equivalente a `-Diagnostico`. No pacote portátil, os
+comandos usam o `.exe`; no código-fonte, `iniciar.cmd` prepara a `.venv` quando
+necessário.
 
 ---
 
@@ -85,11 +101,16 @@ existir, `iniciar.cmd` prepara o ambiente antes de encaminhar qualquer opção.
 
 Você precisará de:
 
-- Windows 11;
-- acesso à internet durante a instalação;
-- Python 3.11, 3.12, 3.13 ou 3.14;
+- Windows 11 x64;
 - Microsoft Excel Desktop para criar a Tabela Dinâmica nativa;
 - a planilha do teste em formato `.xlsx` ou `.xlsm`;
+- espaço para extrair o pacote inteiro.
+
+Para usar o pacote portátil, Python e internet não são necessários. Para executar
+ou desenvolver pelo código-fonte, você também precisará de:
+
+- acesso à internet durante a preparação inicial;
+- Python 3.11, 3.12, 3.13 ou 3.14;
 - alguns minutos para instalar as bibliotecas.
 
 O Visual Studio Code e suas extensões são opcionais e recomendados somente para
@@ -773,7 +794,9 @@ ExcelComprasAutomation/
 ├── .github/
 │   ├── pull_request_template.md
 │   └── workflows/
-│       └── ci.yml
+│       ├── ci.yml
+│       ├── package-windows.yml
+│       └── release-windows.yml
 ├── .vscode/
 │   ├── extensions.json
 │   ├── launch.json
@@ -786,6 +809,11 @@ ExcelComprasAutomation/
 ├── input/
 ├── logs/
 ├── output/
+├── packaging/
+│   ├── ExcelComprasAutomation.spec
+│   └── README_PORTATIL.md
+├── scripts/
+│   └── build_portable.py
 ├── src/
 │   ├── business/
 │   │   ├── policies.py
@@ -815,6 +843,7 @@ ExcelComprasAutomation/
 ├── main.py
 ├── pyproject.toml
 ├── README.md
+├── requirements-build.txt
 ├── requirements.txt
 ├── iniciar.cmd
 ├── run.ps1
@@ -823,6 +852,30 @@ ExcelComprasAutomation/
 
 O `main.py` da raiz é apenas um atalho. A orquestração está em
 `src/core/engine.py`.
+
+## Distribuição portátil
+
+`scripts/build_portable.py` usa a especificação
+`packaging/ExcelComprasAutomation.spec` para criar um executável de console
+`onedir`, sem UPX. A pasta `_internal` contém o runtime congelado; `config`,
+`input`, `output`, `backup` e `logs` permanecem ao lado do executável.
+
+Antes de gerar o ZIP, o script:
+
+1. confirma que as versões do projeto estão sincronizadas;
+2. monta o pacote por uma lista explícita;
+3. confirma as DLLs `pythoncom` e `pywintypes`;
+4. rejeita planilhas, credenciais e artefatos operacionais;
+5. executa versão, ajuda, diagnóstico e uma regressão fallback sintética em
+   caminho com espaços e sem Python externo;
+6. preserva a entrada e valida o gráfico, a ausência de PivotTable e a aba de
+   apoio oculta;
+7. cria o ZIP e o arquivo `.sha256`.
+
+O ZIP é montado em ordem e com metadados estáveis. O executável produzido pelo
+PyInstaller pode variar entre ambientes de build; por isso, a integridade da
+publicação é garantida pelo checksum do artefato efetivamente validado, sem
+alegar reprodutibilidade binária completa.
 
 ## Organização interna do escritor
 
@@ -1023,6 +1076,13 @@ O arquivo `.github/workflows/ci.yml` executa automaticamente a validação quand
 O workflow usa Windows e testa as versões Python 3.11 e 3.14. Em cada versão,
 ele instala as dependências, verifica a sintaxe, executa o Ruff, confere a
 formatação e roda os testes com cobertura mínima de 90%.
+
+O workflow `.github/workflows/package-windows.yml` usa Python 3.14.6 para
+construir o executável Windows x64, executar o smoke test congelado e publicar
+temporariamente o ZIP e seu SHA-256 como artefatos de inspeção. O workflow
+`.github/workflows/release-windows.yml` só é iniciado por uma tag semântica
+anotada que aponta para a `main`; ele reconstrói e valida os mesmos formatos e
+cria uma GitHub Release em rascunho, sem substituir assets existentes.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
@@ -1228,10 +1288,24 @@ Consulte o guia completo:
 
 # 21. Checklist final para a entrevista
 
+Escolha somente o bloco correspondente à forma de execução.
+
+## Pacote portátil
+
+- [ ] ZIP Windows x64 e `.sha256` baixados da GitHub Release oficial.
+- [ ] SHA-256 conferido antes da extração.
+- [ ] Pacote inteiro extraído, com `.exe`, `_internal` e `config` juntos.
+- [ ] `.\iniciar.cmd -Diagnostico` aprovado sem criar artefatos.
+
+## Código-fonte
+
 - [ ] Python 3.11, 3.12, 3.13 ou 3.14 instalado.
-- [ ] Projeto extraído do `.zip`.
+- [ ] Código-fonte extraído do `.zip`.
 - [ ] `iniciar.cmd` conclui a preparação da `.venv`.
 - [ ] `pip check` sem conflitos.
+
+## Entrega
+
 - [ ] Uma única planilha `.xlsx` ou `.xlsm` na pasta `input`, ou `-Arquivo`
       informado.
 - [ ] Planilha fechada durante a execução.
