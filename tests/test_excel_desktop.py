@@ -6,7 +6,7 @@ import builtins
 import logging
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock
 from zipfile import ZipFile
 
@@ -14,6 +14,7 @@ import pytest
 
 import src.excel.excel_desktop as desktop
 from src.core.exceptions import ExcelDesktopError
+from src.core.models import SheetLayout, WorkbookLayout
 
 
 def install_fake_com_modules(
@@ -34,6 +35,366 @@ def install_fake_com_modules(
     monkeypatch.setitem(sys.modules, "win32com", win32com)
     monkeypatch.setitem(sys.modules, "win32com.client", client)
     return pythoncom, client
+
+
+class FakeComError(Exception):
+    """Erro COM controlado, sem depender do pywin32 real."""
+
+
+class RecordingExcel:
+    """Objeto Excel mínimo que registra atribuições relevantes."""
+
+    _tracked_properties = {
+        "Visible",
+        "DisplayAlerts",
+        "ScreenUpdating",
+        "AskToUpdateLinks",
+        "EnableEvents",
+        "Calculation",
+        "CalculateBeforeSave",
+    }
+
+    def __init__(
+        self,
+        events: list[tuple[object, ...]],
+        workbooks: object,
+        *,
+        fail_initial_manual: bool = False,
+        fail_restore: bool = False,
+    ) -> None:
+        object.__setattr__(self, "_events", events)
+        object.__setattr__(self, "_recording", False)
+        object.__setattr__(self, "_manual_assignments", 0)
+        object.__setattr__(self, "_fail_initial_manual", fail_initial_manual)
+        object.__setattr__(self, "_fail_restore", fail_restore)
+        object.__setattr__(self, "Workbooks", workbooks)
+        object.__setattr__(self, "Quit", event_mock(events, "excel.quit"))
+        object.__setattr__(
+            self,
+            "CalculateFullRebuild",
+            event_mock(events, "excel.calculate_full_rebuild"),
+        )
+        object.__setattr__(self, "_recording", True)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if self._recording and name in self._tracked_properties:
+            self._events.append(("excel.set", name, value))
+            if name == "Calculation" and value == desktop.XL_CALCULATION_MANUAL:
+                manual_assignments = self._manual_assignments
+                object.__setattr__(
+                    self,
+                    "_manual_assignments",
+                    manual_assignments + 1,
+                )
+                if self._fail_initial_manual and manual_assignments == 0:
+                    raise RuntimeError("modo manual inicial indisponível")
+            if name == "EnableEvents" and value is True and self._fail_restore:
+                raise FakeComError("restauração indisponível")
+        object.__setattr__(self, name, value)
+
+
+class RecordingPivot:
+    """Pivot mínima com uma falha opcional de formatação não essencial."""
+
+    def __init__(
+        self,
+        events: list[tuple[object, ...]],
+        fields: dict[str, object],
+        *,
+        fail_optional_formatting: bool,
+    ) -> None:
+        object.__setattr__(self, "_events", events)
+        object.__setattr__(
+            self,
+            "_fail_optional_formatting",
+            fail_optional_formatting,
+        )
+        object.__setattr__(self, "_recording", False)
+        object.__setattr__(
+            self,
+            "PivotFields",
+            event_mock(
+                events,
+                "pivot.fields",
+                side_effect=lambda name: fields[name],
+            ),
+        )
+        object.__setattr__(
+            self,
+            "AddDataField",
+            event_mock(
+                events,
+                "pivot.add_data_field",
+                return_value=fields["data"],
+            ),
+        )
+        object.__setattr__(
+            self,
+            "RowAxisLayout",
+            event_mock(events, "pivot.row_axis_layout"),
+        )
+        object.__setattr__(self, "TableRange1", object())
+        object.__setattr__(self, "_recording", True)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if (
+            self._recording
+            and name == "HasAutoFormat"
+            and self._fail_optional_formatting
+        ):
+            self._events.append(("pivot.set", name, value))
+            raise RuntimeError("formatação opcional indisponível")
+        object.__setattr__(self, name, value)
+
+
+def event_mock(
+    events: list[tuple[object, ...]],
+    name: str,
+    *,
+    return_value: object = None,
+    side_effect=None,
+) -> Mock:
+    """Cria um Mock estrito o bastante para registrar ordem e argumentos."""
+
+    def invoke(*args: object, **kwargs: object) -> object:
+        events.append((name, args, kwargs))
+        if isinstance(side_effect, BaseException):
+            raise side_effect
+        if side_effect is not None:
+            return side_effect(*args, **kwargs)
+        return return_value
+
+    return Mock(side_effect=invoke)
+
+
+def make_layout() -> WorkbookLayout:
+    return WorkbookLayout(
+        base=SheetLayout("Base", 1, {}),
+        policies=SheetLayout("Políticas", 1, {}),
+        responses=SheetLayout("Respostas", 1, {}),
+    )
+
+
+def make_native_graph(
+    *,
+    source_last_row: int = 6,
+    open_error: Exception | None = None,
+    save_error: Exception | None = None,
+    fail_initial_manual: bool = False,
+    fail_optional_pivot_formatting: bool = False,
+    fail_axes_formatting: bool = False,
+    fail_restore: bool = False,
+) -> SimpleNamespace:
+    """Monta o grafo COM mínimo usado pelo fluxo de Pivot nativa."""
+
+    events: list[tuple[object, ...]] = []
+    old_chart_1 = SimpleNamespace(Delete=event_mock(events, "old_chart_1.delete"))
+    old_chart_2 = SimpleNamespace(Delete=event_mock(events, "old_chart_2.delete"))
+
+    chart_title = SimpleNamespace(Text=None)
+    legend = SimpleNamespace(Position=None)
+    tick_labels = SimpleNamespace(NumberFormat=None)
+    axis = SimpleNamespace(TickLabels=tick_labels)
+    axes_error = RuntimeError("eixo indisponível") if fail_axes_formatting else None
+    chart = SimpleNamespace(
+        SetSourceData=event_mock(events, "chart.set_source_data"),
+        Axes=event_mock(
+            events,
+            "chart.axes",
+            return_value=axis,
+            side_effect=axes_error,
+        ),
+        ChartTitle=chart_title,
+        Legend=legend,
+    )
+    chart_object = SimpleNamespace(Name=None, Chart=chart)
+    chart_collection = SimpleNamespace(
+        Count=2,
+        Add=event_mock(
+            events,
+            "chart_objects.add",
+            return_value=chart_object,
+        ),
+    )
+
+    def chart_objects(index: int | None = None) -> object:
+        if index is None:
+            return chart_collection
+        return {1: old_chart_1, 2: old_chart_2}[index]
+
+    destination = object()
+    anchor = SimpleNamespace(Left=100, Top=200)
+
+    def response_cells(row: int, column: int) -> object:
+        return {
+            (20, 1): destination,
+            (20, 8): anchor,
+        }[(row, column)]
+
+    response_columns: dict[str, SimpleNamespace] = {}
+
+    def columns(name: str) -> SimpleNamespace:
+        response_columns.setdefault(name, SimpleNamespace(ColumnWidth=None))
+        return response_columns[name]
+
+    response_sheet = SimpleNamespace(
+        ChartObjects=event_mock(
+            events,
+            "response.chart_objects",
+            side_effect=chart_objects,
+        ),
+        Cells=event_mock(
+            events,
+            "response.cells",
+            side_effect=response_cells,
+        ),
+        Columns=event_mock(
+            events,
+            "response.columns",
+            side_effect=columns,
+        ),
+    )
+
+    end_cell = SimpleNamespace(
+        End=event_mock(
+            events,
+            "source.end",
+            return_value=SimpleNamespace(Row=source_last_row),
+        )
+    )
+    headers = {
+        (3, 11): "Centro de Custo",
+        (3, 12): "Tipo de Serviço",
+        (3, 13): "Valor Total",
+    }
+    rows = SimpleNamespace(Count=1_048_576)
+
+    def source_cells(row: int, column: int) -> object:
+        if (row, column) == (rows.Count, 11):
+            return end_cell
+        return SimpleNamespace(Value=headers[(row, column)])
+
+    source_sheet = SimpleNamespace(
+        Rows=rows,
+        Cells=event_mock(
+            events,
+            "source.cells",
+            side_effect=source_cells,
+        ),
+    )
+
+    fields = {
+        "Centro de Custo": SimpleNamespace(Orientation=None, Position=None),
+        "Tipo de Serviço": SimpleNamespace(Orientation=None, Position=None),
+        "Valor Total": SimpleNamespace(),
+        "data": SimpleNamespace(NumberFormat=None),
+    }
+    pivot = RecordingPivot(
+        events,
+        fields,
+        fail_optional_formatting=fail_optional_pivot_formatting,
+    )
+    pivot_cache = SimpleNamespace(
+        CreatePivotTable=event_mock(
+            events,
+            "pivot_cache.create_pivot_table",
+            return_value=pivot,
+        )
+    )
+    pivot_caches = SimpleNamespace(
+        Create=event_mock(
+            events,
+            "pivot_caches.create",
+            return_value=pivot_cache,
+        )
+    )
+
+    sheets = {
+        "Respostas": response_sheet,
+        desktop.PIVOT_SOURCE_SHEET: source_sheet,
+    }
+    save_side_effect = save_error
+    workbook = SimpleNamespace(
+        Worksheets=event_mock(
+            events,
+            "workbook.worksheets",
+            side_effect=lambda name: sheets[name],
+        ),
+        PivotCaches=event_mock(
+            events,
+            "workbook.pivot_caches",
+            return_value=pivot_caches,
+        ),
+        Save=event_mock(
+            events,
+            "workbook.save",
+            side_effect=save_side_effect,
+        ),
+        Close=event_mock(events, "workbook.close"),
+    )
+    workbooks = SimpleNamespace(
+        Open=event_mock(
+            events,
+            "workbooks.open",
+            return_value=workbook,
+            side_effect=open_error,
+        )
+    )
+    excel = RecordingExcel(
+        events,
+        workbooks,
+        fail_initial_manual=fail_initial_manual,
+        fail_restore=fail_restore,
+    )
+    return SimpleNamespace(
+        events=events,
+        excel=excel,
+        workbooks=workbooks,
+        workbook=workbook,
+        response_sheet=response_sheet,
+        response_columns=response_columns,
+        source_sheet=source_sheet,
+        pivot_caches=pivot_caches,
+        pivot_cache=pivot_cache,
+        pivot=pivot,
+        fields=fields,
+        chart=chart,
+        chart_object=chart_object,
+        axis=axis,
+        destination=destination,
+        anchor=anchor,
+        old_chart_1=old_chart_1,
+        old_chart_2=old_chart_2,
+    )
+
+
+def install_recording_com(
+    monkeypatch: pytest.MonkeyPatch,
+    graph: SimpleNamespace,
+    *,
+    dispatch_error: Exception | None = None,
+) -> tuple[ModuleType, ModuleType]:
+    pythoncom, client = install_fake_com_modules(monkeypatch, graph.excel)
+    pythoncom.com_error = FakeComError
+    pythoncom.CoInitialize.side_effect = lambda: graph.events.append(
+        ("pythoncom.initialize", (), {})
+    )
+    pythoncom.CoUninitialize.side_effect = lambda: graph.events.append(
+        ("pythoncom.uninitialize", (), {})
+    )
+
+    def dispatch(application: str) -> object:
+        graph.events.append(("client.dispatch", (application,), {}))
+        if dispatch_error is not None:
+            raise dispatch_error
+        return graph.excel
+
+    client.DispatchEx.side_effect = dispatch
+    return pythoncom, client
+
+
+def event_names(graph: SimpleNamespace) -> list[str]:
+    return [str(item[0]) for item in graph.events]
 
 
 def test_pywin32_availability_short_circuits_outside_windows(
@@ -232,3 +593,314 @@ def test_native_pivot_requires_pywin32(
             last_row=40,
             logger=Mock(spec=logging.Logger),
         )
+
+
+def test_native_pivot_characterizes_successful_com_sequence(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(source_last_row=6)
+    pythoncom, client = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    output_file = tmp_path / "resultado.xlsx"
+    postprocess = Mock(
+        side_effect=lambda path: graph.events.append(
+            ("postprocess.calculation_on_open", (path,), {})
+        )
+    )
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+
+    result = desktop.create_native_pivot_and_recalculate(
+        output_file,
+        make_layout(),
+        pivot_start_row=20,
+        last_row=40,
+        logger=logger,
+    )
+
+    assert result is False
+    pythoncom.CoInitialize.assert_called_once_with()
+    client.DispatchEx.assert_called_once_with("Excel.Application")
+    graph.workbooks.Open.assert_called_once_with(
+        str(output_file.resolve()),
+        UpdateLinks=0,
+        ReadOnly=False,
+        IgnoreReadOnlyRecommended=True,
+    )
+    assert graph.workbook.Worksheets.call_args_list[0].args == ("Respostas",)
+    assert graph.workbook.Worksheets.call_args_list[1].args == (
+        desktop.PIVOT_SOURCE_SHEET,
+    )
+    assert ("source.end", (desktop.XL_UP,), {}) in graph.events
+    graph.pivot_caches.Create.assert_called_once_with(
+        SourceType=desktop.XL_DATABASE,
+        SourceData="'Apoio_Automacao'!R3C11:R6C13",
+    )
+    graph.pivot_cache.CreatePivotTable.assert_called_once_with(
+        TableDestination=graph.destination,
+        TableName="PivotValorTotalCentroCusto",
+    )
+    assert graph.fields["Centro de Custo"].Orientation == desktop.XL_ROW_FIELD
+    assert graph.fields["Centro de Custo"].Position == 1
+    assert graph.fields["Tipo de Serviço"].Orientation == desktop.XL_COLUMN_FIELD
+    assert graph.fields["Tipo de Serviço"].Position == 1
+    graph.pivot.AddDataField.assert_called_once_with(
+        graph.fields["Valor Total"],
+        "Soma de Valor Total",
+        desktop.XL_SUM,
+    )
+    assert graph.fields["data"].NumberFormat == "R$ #,##0.00"
+    graph.pivot.RowAxisLayout.assert_called_once_with(desktop.XL_TABULAR_ROW)
+    assert graph.pivot.TableStyle2 == "PivotStyleMedium2"
+    assert graph.pivot.RowGrand is False
+    assert graph.pivot.ColumnGrand is False
+    assert graph.pivot.HasAutoFormat is False
+    assert graph.pivot.PreserveFormatting is True
+    assert {
+        column: cell.ColumnWidth for column, cell in graph.response_columns.items()
+    } == {
+        "A:A": 42,
+        "B:B": 33,
+        "C:C": 45,
+        "D:D": 16,
+    }
+    graph.response_sheet.ChartObjects.assert_any_call(2)
+    graph.response_sheet.ChartObjects.assert_any_call(1)
+    assert event_names(graph).index("old_chart_2.delete") < event_names(graph).index(
+        "old_chart_1.delete"
+    )
+    graph.response_sheet.ChartObjects().Add.assert_called_once_with(
+        100,
+        200,
+        760,
+        380,
+    )
+    assert graph.chart_object.Name == "GraficoValorTotalCentroCusto"
+    graph.chart.SetSourceData.assert_called_once_with(graph.pivot.TableRange1)
+    assert graph.chart.ChartType == desktop.XL_COLUMN_CLUSTERED
+    assert graph.chart.HasTitle is True
+    assert (
+        graph.chart.ChartTitle.Text
+        == "Valor Total por Centro de Custo e Tipo de Serviço"
+    )
+    assert graph.chart.HasLegend is True
+    assert graph.chart.Legend.Position == desktop.XL_LEGEND_BOTTOM
+    assert graph.axis.TickLabels.NumberFormat == "R$ #,##0"
+    graph.workbook.Save.assert_called_once_with()
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    assert graph.excel.EnableEvents is True
+    assert graph.excel.Calculation == desktop.XL_CALCULATION_AUTOMATIC
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_called_once_with(output_file)
+
+    names = event_names(graph)
+    assert names.index("workbook.save") < names.index("workbook.close")
+    assert names.index("workbook.close") < names.index("excel.quit")
+    assert names.index("excel.quit") < names.index("pythoncom.uninitialize")
+    assert names.index("pythoncom.uninitialize") < names.index(
+        "postprocess.calculation_on_open"
+    )
+
+
+def test_native_pivot_wraps_empty_static_source_and_cleans_up(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(source_last_row=3)
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+
+    with pytest.raises(
+        ExcelDesktopError,
+        match="não possui dados",
+    ) as captured:
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    assert isinstance(captured.value.__cause__, ExcelDesktopError)
+    graph.old_chart_2.Delete.assert_called_once_with()
+    graph.old_chart_1.Delete.assert_called_once_with()
+    graph.workbook.PivotCaches.assert_not_called()
+    graph.workbook.Save.assert_not_called()
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+
+
+def test_native_pivot_wraps_dispatch_failure_and_only_uninitializes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph()
+    pythoncom, _ = install_recording_com(
+        monkeypatch,
+        graph,
+        dispatch_error=RuntimeError("falha dispatch"),
+    )
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+
+    with pytest.raises(ExcelDesktopError, match="falha dispatch") as captured:
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    assert isinstance(captured.value.__cause__, RuntimeError)
+    graph.workbooks.Open.assert_not_called()
+    graph.workbook.Close.assert_not_called()
+    graph.excel.Quit.assert_not_called()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+
+
+def test_native_pivot_wraps_open_failure_and_quits_excel(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(open_error=RuntimeError("falha open"))
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+
+    with pytest.raises(ExcelDesktopError, match="falha open") as captured:
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    assert isinstance(captured.value.__cause__, RuntimeError)
+    graph.workbook.Close.assert_not_called()
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+
+
+def test_native_pivot_save_failure_does_not_postprocess(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(save_error=RuntimeError("falha save"))
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+
+    with pytest.raises(ExcelDesktopError, match="falha save") as captured:
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    assert isinstance(captured.value.__cause__, RuntimeError)
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+
+
+def test_native_pivot_tolerates_optional_formatting_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(
+        fail_initial_manual=True,
+        fail_optional_pivot_formatting=True,
+        fail_axes_formatting=True,
+    )
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+
+    result = desktop.create_native_pivot_and_recalculate(
+        tmp_path / "resultado.xlsx",
+        make_layout(),
+        pivot_start_row=20,
+        last_row=40,
+        logger=logger,
+    )
+
+    assert result is False
+    assert logger.debug.call_count == 3
+    assert all(
+        call.kwargs == {"exc_info": True} for call in logger.debug.call_args_list
+    )
+    graph.workbook.Save.assert_called_once_with()
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_called_once()
+
+
+def test_recalculate_only_timeout_closes_without_saving(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workbook = Mock()
+    workbooks = Mock()
+    workbooks.Open.return_value = workbook
+    excel = Mock()
+    excel.Workbooks = workbooks
+    pythoncom, _ = install_fake_com_modules(monkeypatch, excel)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    monkeypatch.setattr(
+        desktop,
+        "_wait_for_calculation",
+        Mock(side_effect=ExcelDesktopError("tempo excedido")),
+    )
+
+    with pytest.raises(ExcelDesktopError, match="tempo excedido"):
+        desktop.recalculate_only(
+            tmp_path / "resultado.xlsx",
+            Mock(spec=logging.Logger),
+        )
+
+    excel.CalculateFullRebuild.assert_called_once_with()
+    workbook.Save.assert_not_called()
+    workbook.Close.assert_called_once_with(SaveChanges=False)
+    excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+
+
+def test_recalculate_only_open_failure_quits_and_uninitializes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workbooks = Mock()
+    workbooks.Open.side_effect = RuntimeError("falha ao abrir")
+    excel = Mock()
+    excel.Workbooks = workbooks
+    pythoncom, _ = install_fake_com_modules(monkeypatch, excel)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+
+    with pytest.raises(RuntimeError, match="falha ao abrir"):
+        desktop.recalculate_only(
+            tmp_path / "resultado.xlsx",
+            Mock(spec=logging.Logger),
+        )
+
+    excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
