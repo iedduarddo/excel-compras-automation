@@ -32,7 +32,6 @@ class EngineHarness:
     logger: Mock
     load_workbook: Mock
     native_create: Mock
-    recalculate: Mock
     fallback_create: Mock
     validate: Mock
     pywin_available: Mock
@@ -114,8 +113,7 @@ def install_harness(
     logger = Mock(spec=logging.Logger)
     detector = Mock()
     detector.detect.return_value = layout
-    native_create = Mock(return_value=True)
-    recalculate = Mock()
+    native_create = Mock(return_value=False)
     fallback_create = Mock()
     validate = Mock(
         return_value={
@@ -176,7 +174,6 @@ def install_harness(
         "create_native_pivot_and_recalculate",
         native_create,
     )
-    monkeypatch.setattr(engine_module, "recalculate_only", recalculate)
     monkeypatch.setattr(
         engine_module,
         "create_fallback_summary_and_chart",
@@ -194,7 +191,6 @@ def install_harness(
         logger=logger,
         load_workbook=load_workbook,
         native_create=native_create,
-        recalculate=recalculate,
         fallback_create=fallback_create,
         validate=validate,
         pywin_available=pywin_available,
@@ -245,7 +241,7 @@ def test_engine_creates_fallback_when_excel_is_unavailable(
     assert validation_kwargs["cached_values_expected"] is False
 
 
-def test_engine_uses_native_pivot_without_fallback(
+def test_engine_uses_native_pivot_without_requiring_cached_values(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -272,10 +268,9 @@ def test_engine_uses_native_pivot_without_fallback(
         harness.logger,
     )
     harness.fallback_create.assert_not_called()
-    harness.recalculate.assert_not_called()
     validation_kwargs = harness.validate.call_args.kwargs
     assert validation_kwargs["native_pivot_expected"] is True
-    assert validation_kwargs["cached_values_expected"] is True
+    assert validation_kwargs["cached_values_expected"] is False
 
 
 def test_engine_falls_back_after_excel_desktop_error(
@@ -297,7 +292,9 @@ def test_engine_falls_back_after_excel_desktop_error(
 
     assert result.native_pivot_created is False
     harness.fallback_create.assert_called_once()
-    harness.recalculate.assert_not_called()
+    validation_kwargs = harness.validate.call_args.kwargs
+    assert validation_kwargs["native_pivot_expected"] is False
+    assert validation_kwargs["cached_values_expected"] is False
     warning_messages = [call.args[0] for call in harness.logger.warning.call_args_list]
     assert "%s" in warning_messages
     assert any("compatibilidade" in message for message in warning_messages)
@@ -324,7 +321,6 @@ def test_engine_does_not_touch_locked_output_after_cleanup_error(
 
     assert captured.value is cleanup_error
     harness.fallback_create.assert_not_called()
-    harness.recalculate.assert_not_called()
     harness.validate.assert_not_called()
     harness.logger.error.assert_called_once()
 
