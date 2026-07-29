@@ -15,3 +15,7 @@ class ValidationError(AutomationError):
 
 class ExcelDesktopError(AutomationError):
     """O Microsoft Excel não conseguiu concluir a etapa nativa."""
+
+
+class ExcelDesktopCleanupError(ExcelDesktopError):
+    """O Excel concluiu ou iniciou a operação, mas não liberou os recursos."""

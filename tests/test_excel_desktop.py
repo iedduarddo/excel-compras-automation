@@ -13,7 +13,7 @@ from zipfile import ZipFile
 import pytest
 
 import src.excel.excel_desktop as desktop
-from src.core.exceptions import ExcelDesktopError
+from src.core.exceptions import ExcelDesktopCleanupError, ExcelDesktopError
 from src.core.models import SheetLayout, WorkbookLayout
 
 
@@ -61,13 +61,29 @@ class RecordingExcel:
         *,
         fail_initial_manual: bool = False,
         fail_restore: bool = False,
+        fail_read_property: str | None = None,
+        fail_quit_lookup: bool = False,
     ) -> None:
         object.__setattr__(self, "_events", events)
         object.__setattr__(self, "_recording", False)
         object.__setattr__(self, "_manual_assignments", 0)
         object.__setattr__(self, "_fail_initial_manual", fail_initial_manual)
         object.__setattr__(self, "_fail_restore", fail_restore)
+        object.__setattr__(self, "_fail_read_property", fail_read_property)
+        object.__setattr__(self, "_read_failure_consumed", False)
+        object.__setattr__(self, "_fail_quit_lookup", fail_quit_lookup)
         object.__setattr__(self, "Workbooks", workbooks)
+        object.__setattr__(self, "Visible", True)
+        object.__setattr__(self, "DisplayAlerts", True)
+        object.__setattr__(self, "ScreenUpdating", True)
+        object.__setattr__(self, "AskToUpdateLinks", True)
+        object.__setattr__(self, "EnableEvents", True)
+        object.__setattr__(
+            self,
+            "Calculation",
+            desktop.XL_CALCULATION_AUTOMATIC,
+        )
+        object.__setattr__(self, "CalculateBeforeSave", True)
         object.__setattr__(self, "Quit", event_mock(events, "excel.quit"))
         object.__setattr__(
             self,
@@ -75,6 +91,21 @@ class RecordingExcel:
             event_mock(events, "excel.calculate_full_rebuild"),
         )
         object.__setattr__(self, "_recording", True)
+
+    def __getattribute__(self, name: str) -> object:
+        if name == "Quit" and object.__getattribute__(self, "_fail_quit_lookup"):
+            raise FakeComError("lookup de Quit indisponível")
+
+        fail_read_property = object.__getattribute__(self, "_fail_read_property")
+        read_failure_consumed = object.__getattribute__(
+            self,
+            "_read_failure_consumed",
+        )
+        if name == fail_read_property and not read_failure_consumed:
+            object.__setattr__(self, "_read_failure_consumed", True)
+            raise FakeComError(f"leitura de {name} indisponível")
+
+        return object.__getattribute__(self, name)
 
     def __setattr__(self, name: str, value: object) -> None:
         if self._recording and name in self._tracked_properties:
@@ -184,6 +215,8 @@ def make_native_graph(
     fail_optional_pivot_formatting: bool = False,
     fail_axes_formatting: bool = False,
     fail_restore: bool = False,
+    fail_read_property: str | None = None,
+    fail_quit_lookup: bool = False,
 ) -> SimpleNamespace:
     """Monta o grafo COM mínimo usado pelo fluxo de Pivot nativa."""
 
@@ -345,6 +378,8 @@ def make_native_graph(
         workbooks,
         fail_initial_manual=fail_initial_manual,
         fail_restore=fail_restore,
+        fail_read_property=fail_read_property,
+        fail_quit_lookup=fail_quit_lookup,
     )
     return SimpleNamespace(
         events=events,
@@ -689,8 +724,8 @@ def test_native_pivot_characterizes_successful_com_sequence(
     assert graph.axis.TickLabels.NumberFormat == "R$ #,##0"
     graph.workbook.Save.assert_called_once_with()
     graph.workbook.Close.assert_called_once_with(SaveChanges=False)
-    assert graph.excel.EnableEvents is True
-    assert graph.excel.Calculation == desktop.XL_CALCULATION_AUTOMATIC
+    assert graph.excel.EnableEvents is False
+    assert graph.excel.Calculation == desktop.XL_CALCULATION_MANUAL
     graph.excel.Quit.assert_called_once_with()
     pythoncom.CoUninitialize.assert_called_once_with()
     postprocess.assert_called_once_with(output_file)
@@ -855,6 +890,243 @@ def test_native_pivot_tolerates_optional_formatting_failures(
     postprocess.assert_called_once()
 
 
+def test_native_cleanup_continues_after_workbook_close_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph()
+    graph.workbook.Close.side_effect = RuntimeError("falha ao fechar workbook")
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="fechar a pasta de trabalho",
+    ):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=logger,
+        )
+
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    assert graph.excel.EnableEvents is False
+    assert graph.excel.Calculation == desktop.XL_CALCULATION_MANUAL
+    assert graph.excel.DisplayAlerts is False
+    assert graph.excel.ScreenUpdating is False
+    assert graph.excel.AskToUpdateLinks is False
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+    logger.warning.assert_called_once()
+
+
+def test_native_cleanup_restores_the_original_excel_settings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph()
+    original_settings = {
+        "Visible": True,
+        "DisplayAlerts": False,
+        "ScreenUpdating": True,
+        "AskToUpdateLinks": False,
+        "EnableEvents": False,
+        "Calculation": 777,
+        "CalculateBeforeSave": True,
+    }
+    for property_name, value in original_settings.items():
+        object.__setattr__(graph.excel, property_name, value)
+
+    graph.excel.Quit.side_effect = RuntimeError("falha quit")
+    install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="encerrar o Excel Desktop",
+    ):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    assert {
+        property_name: getattr(graph.excel, property_name)
+        for property_name in original_settings
+    } == original_settings
+    postprocess.assert_not_called()
+
+
+def test_native_cleanup_catches_quit_attribute_lookup_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(fail_quit_lookup=True)
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="encerrar o Excel Desktop",
+    ):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=logger,
+        )
+
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+    assert any(
+        "lookup de Quit indisponível" in str(call.args)
+        for call in logger.warning.call_args_list
+    )
+
+
+def test_native_cleanup_uses_safe_restore_after_setting_read_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(fail_read_property="DisplayAlerts")
+    graph.excel.Quit.side_effect = RuntimeError("falha quit")
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="encerrar o Excel Desktop",
+    ):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=logger,
+        )
+
+    assert graph.excel.DisplayAlerts is True
+    logger.debug.assert_any_call(
+        "Não foi possível ler Excel.%s antes da automação.",
+        "DisplayAlerts",
+        exc_info=True,
+    )
+    pythoncom.CoUninitialize.assert_called_once_with()
+
+
+def test_native_cleanup_preserves_primary_error_and_attempts_every_step(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(source_last_row=3)
+    graph.workbook.Close.side_effect = RuntimeError("falha close")
+    graph.excel.Quit.side_effect = RuntimeError("falha quit")
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    pythoncom.CoUninitialize.side_effect = RuntimeError("falha uninitialize")
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+    logger.warning.side_effect = RuntimeError("falha no logging")
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="não possui dados",
+    ) as captured:
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=logger,
+        )
+
+    assert isinstance(captured.value.__cause__, ExcelDesktopError)
+    assert "não possui dados" in str(captured.value.__cause__)
+    assert any("falha close" in note for note in captured.value.__notes__)
+    assert any("falha quit" in note for note in captured.value.__notes__)
+    assert any("falha uninitialize" in note for note in captured.value.__notes__)
+    graph.workbook.Close.assert_called_once_with(SaveChanges=False)
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+    assert logger.warning.call_count == 3
+
+
+def test_native_cleanup_tolerates_independent_restore_and_uninitialize_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph(fail_restore=True)
+    graph.excel.Quit.side_effect = FakeComError("falha quit")
+    pythoncom, _ = install_recording_com(monkeypatch, graph)
+    pythoncom.CoUninitialize.side_effect = FakeComError("falha uninitialize")
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    postprocess = Mock()
+    monkeypatch.setattr(desktop, "_set_calculation_on_open", postprocess)
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="encerrar o Excel Desktop",
+    ):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=logger,
+        )
+
+    assert graph.excel.EnableEvents is False
+    assert graph.excel.Calculation == desktop.XL_CALCULATION_AUTOMATIC
+    assert graph.excel.DisplayAlerts is True
+    assert graph.excel.ScreenUpdating is True
+    assert graph.excel.AskToUpdateLinks is True
+    graph.excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    postprocess.assert_not_called()
+    assert logger.warning.call_count == 3
+
+
+def test_native_coinitialize_failure_does_not_uninitialize_com(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    graph = make_native_graph()
+    pythoncom, client = install_recording_com(monkeypatch, graph)
+    pythoncom.CoInitialize.side_effect = RuntimeError("falha CoInitialize")
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+
+    with pytest.raises(ExcelDesktopError, match="falha CoInitialize"):
+        desktop.create_native_pivot_and_recalculate(
+            tmp_path / "resultado.xlsx",
+            make_layout(),
+            pivot_start_row=20,
+            last_row=40,
+            logger=Mock(spec=logging.Logger),
+        )
+
+    client.DispatchEx.assert_not_called()
+    pythoncom.CoUninitialize.assert_not_called()
+
+
 def test_recalculate_only_timeout_closes_without_saving(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -883,6 +1155,79 @@ def test_recalculate_only_timeout_closes_without_saving(
     workbook.Close.assert_called_once_with(SaveChanges=False)
     excel.Quit.assert_called_once_with()
     pythoncom.CoUninitialize.assert_called_once_with()
+
+
+def test_recalculate_cleanup_failure_does_not_skip_quit_or_uninitialize(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workbook = Mock()
+    workbook.Close.side_effect = RuntimeError("falha ao fechar workbook")
+    workbooks = Mock()
+    workbooks.Open.return_value = workbook
+    excel = Mock()
+    excel.Workbooks = workbooks
+    pythoncom, _ = install_fake_com_modules(monkeypatch, excel)
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    monkeypatch.setattr(desktop, "_wait_for_calculation", Mock())
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="fechar a pasta de trabalho",
+    ):
+        desktop.recalculate_only(
+            tmp_path / "resultado.xlsx",
+            logger,
+        )
+
+    workbook.Save.assert_called_once_with()
+    workbook.Close.assert_called_once_with(SaveChanges=True)
+    excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    logger.warning.assert_called_once()
+
+
+def test_recalculate_cleanup_preserves_timeout_as_primary_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workbook = Mock()
+    workbook.Close.side_effect = RuntimeError("falha close")
+    workbooks = Mock()
+    workbooks.Open.return_value = workbook
+    excel = Mock()
+    excel.Workbooks = workbooks
+    excel.Quit.side_effect = RuntimeError("falha quit")
+    pythoncom, _ = install_fake_com_modules(monkeypatch, excel)
+    pythoncom.CoUninitialize.side_effect = RuntimeError("falha uninitialize")
+    monkeypatch.setattr(desktop, "pywin32_is_available", lambda: True)
+    timeout_error = ExcelDesktopError("tempo excedido")
+    monkeypatch.setattr(
+        desktop,
+        "_wait_for_calculation",
+        Mock(side_effect=timeout_error),
+    )
+    logger = Mock(spec=logging.Logger)
+
+    with pytest.raises(
+        ExcelDesktopCleanupError,
+        match="tempo excedido",
+    ) as captured:
+        desktop.recalculate_only(
+            tmp_path / "resultado.xlsx",
+            logger,
+        )
+
+    assert captured.value.__cause__ is timeout_error
+    assert any("falha close" in note for note in captured.value.__notes__)
+    assert any("falha quit" in note for note in captured.value.__notes__)
+    assert any("falha uninitialize" in note for note in captured.value.__notes__)
+    workbook.Save.assert_not_called()
+    workbook.Close.assert_called_once_with(SaveChanges=False)
+    excel.Quit.assert_called_once_with()
+    pythoncom.CoUninitialize.assert_called_once_with()
+    assert logger.warning.call_count == 3
 
 
 def test_recalculate_only_open_failure_quits_and_uninitializes(
