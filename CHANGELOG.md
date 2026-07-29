@@ -11,6 +11,34 @@ com versionamento semântico.
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
 
+## 1.6.0 — 2026-07-29
+
+### Adicionado
+
+- iniciador `iniciar.cmd` para preparar o ambiente quando necessário, executar
+  `run.ps1`, repassar argumentos e preservar o código de saída;
+- ajuda por `-Help` ou `-h` com opções e exemplos de uso do `run.ps1`;
+- testes de contrato dos scripts Windows sem instalar pacotes nem iniciar o
+  Excel Desktop.
+
+### Alterado
+
+- `setup.ps1` agora aceita somente Python 3.11 a 3.14, valida cada código de
+  saída, cria as pastas operacionais e reutiliza com segurança uma `.venv`
+  compatível;
+- `run.ps1` passou a autodetectar a única planilha `.xlsx` ou `.xlsm` da pasta
+  `input`, enviando `--input` somente quando `-Arquivo` é informado;
+- onboarding recomendado por duplo clique em `iniciar.cmd`, sem exigir VS Code
+  ou ativação manual do ambiente virtual;
+- janela do iniciador mantida aberta ao final quando ele é chamado sem
+  argumentos, preservando a execução não interativa quando há parâmetros.
+
+### Validado
+
+- 137 testes aprovados, com cobertura total de 97,92%;
+- contratos de versão do Python, idempotência, diretórios operacionais,
+  autodetecção da entrada, switches públicos e códigos de saída aprovados.
+
 ## 1.5.0 — 2026-07-29
 
 ### Adicionado
