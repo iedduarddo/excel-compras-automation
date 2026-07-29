@@ -11,6 +11,36 @@ com versionamento semântico.
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - preparar empacotamento e interface para usuários não técnicos.
 
+## 1.5.0 — 2026-07-29
+
+### Adicionado
+
+- erro específico `ExcelDesktopCleanupError` para indicar que o Excel pode não
+  ter liberado a pasta de trabalho ou o processo;
+- testes de contrato com objetos COM simulados para inicialização parcial,
+  criação da PivotTable, recálculo e falhas independentes de limpeza.
+
+### Corrigido
+
+- fechamento da pasta de trabalho, restauração das configurações do Excel,
+  encerramento do aplicativo e liberação da sessão COM executados de forma
+  independente, mesmo quando uma etapa anterior falha;
+- preservação do erro principal, com falhas adicionais de limpeza registradas
+  sem impedir as tentativas seguintes;
+- interrupção segura do Engine após uma falha crítica de limpeza, evitando
+  reabrir uma saída que ainda pode estar bloqueada pelo Excel.
+
+### Validado
+
+- 126 testes aprovados, com cobertura total de 97,92%;
+- módulo `src/excel/excel_desktop.py` com 240 statements sem linhas ausentes e
+  99% de cobertura considerando branches;
+- regressões reais dos modos nativo e fallback aprovadas com 40 solicitações e
+  0 erros de fórmula;
+- modo nativo aprovado com uma PivotTable, um gráfico, quatro regras de
+  formatação condicional, aba de suporte oculta, arquivo original preservado e
+  nenhuma instância residual de `EXCEL.EXE`.
+
 ## 1.4.0 — 2026-07-28
 
 ### Adicionado

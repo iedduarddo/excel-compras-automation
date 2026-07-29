@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.business.policies import analyze_travels, find_last_data_row, read_policies
 from src.business.priorities import apply_priority_scores
-from src.core.exceptions import ExcelDesktopError
+from src.core.exceptions import ExcelDesktopCleanupError, ExcelDesktopError
 from src.core.models import RunResult
 from src.excel.detection import WorkbookDetector
 from src.excel.excel_desktop import (
@@ -125,6 +125,14 @@ class AutomationEngine:
                     logger,
                 )
                 native_pivot_created = True
+            except ExcelDesktopCleanupError:
+                logger.error(
+                    "O Excel Desktop não liberou todos os recursos. "
+                    "A execução será interrompida para evitar novo acesso "
+                    "ao arquivo possivelmente bloqueado.",
+                    exc_info=True,
+                )
+                raise
             except ExcelDesktopError as error:
                 native_attempt_failed = True
                 logger.warning("%s", error)
@@ -151,6 +159,13 @@ class AutomationEngine:
                 try:
                     recalculate_only(paths.output_file, logger)
                     desktop_recalculated = True
+                except ExcelDesktopCleanupError:
+                    logger.error(
+                        "O Excel Desktop não liberou todos os recursos após "
+                        "o recálculo. A execução será interrompida.",
+                        exc_info=True,
+                    )
+                    raise
                 except Exception:
                     logger.warning(
                         "Não foi possível recalcular o resumo pelo Excel Desktop. "
