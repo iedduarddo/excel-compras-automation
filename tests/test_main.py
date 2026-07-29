@@ -227,5 +227,8 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert "[switch]$Version" in script
     assert '$PythonArguments += "--diagnostico"' in script
     assert '$PythonArguments += "--version"' in script
-    assert "-not $Diagnostico -and -not $Version" in script
-    assert "exit $LASTEXITCODE" in script
+    assert "if ($Diagnostico -and $Version)" in script
+    assert "if ($Version)" in script
+    assert "if ($Diagnostico)" in script
+    assert '$NomeCompleto = Read-Host "Digite seu nome completo"' in script
+    assert "exit $ExitCode" in script
