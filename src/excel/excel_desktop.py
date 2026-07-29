@@ -8,10 +8,13 @@ import platform
 import re
 import tempfile
 import time
+from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
+from typing import Any, TypeAlias
 from zipfile import ZipFile
 
-from src.core.exceptions import ExcelDesktopError
+from src.core.exceptions import ExcelDesktopCleanupError, ExcelDesktopError
 from src.core.models import WorkbookLayout
 
 XL_DATABASE = 1
@@ -26,6 +29,31 @@ XL_A1 = 1
 XL_TABULAR_ROW = 1
 XL_UP = -4162
 PIVOT_SOURCE_SHEET = "Apoio_Automacao"
+_NATIVE_EXCEL_SETTINGS = (
+    "Visible",
+    "DisplayAlerts",
+    "ScreenUpdating",
+    "AskToUpdateLinks",
+    "EnableEvents",
+    "Calculation",
+    "CalculateBeforeSave",
+)
+_RECALCULATION_EXCEL_SETTINGS = (
+    "Visible",
+    "DisplayAlerts",
+    "ScreenUpdating",
+    "Calculation",
+)
+_SAFE_EXCEL_SETTINGS = {
+    "Visible": False,
+    "DisplayAlerts": True,
+    "ScreenUpdating": True,
+    "AskToUpdateLinks": True,
+    "EnableEvents": True,
+    "Calculation": XL_CALCULATION_AUTOMATIC,
+    "CalculateBeforeSave": True,
+}
+_CleanupFailure: TypeAlias = tuple[str, Exception, bool]
 
 
 def pywin32_is_available() -> bool:
@@ -68,10 +96,20 @@ def create_native_pivot_and_recalculate(
     excel = None
     workbook = None
     saved = False
-    pythoncom.CoInitialize()
+    com_initialized = False
+    operation_error: Exception | None = None
+    cleanup_failures: list[_CleanupFailure] = []
+    original_settings: dict[str, object] = {}
     try:
+        pythoncom.CoInitialize()
+        com_initialized = True
         logger.info("Abrindo o Excel Desktop em segundo plano.")
         excel = win32com.client.DispatchEx("Excel.Application")
+        original_settings = _capture_excel_settings(
+            excel,
+            _NATIVE_EXCEL_SETTINGS,
+            logger,
+        )
         excel.Visible = False
         excel.DisplayAlerts = False
         excel.ScreenUpdating = False
@@ -197,29 +235,47 @@ def create_native_pivot_and_recalculate(
 
         workbook.Save()
         saved = True
-        logger.info("Excel Desktop concluiu a Tabela Dinâmica nativa.")
-    except Exception as error:
-        raise ExcelDesktopError(
-            "O Excel Desktop não conseguiu criar a Tabela Dinâmica nativa. "
-            f"Detalhe técnico: {error}"
-        ) from error
+    except Exception as error:  # noqa: BLE001
+        # A automação COM pode falhar com exceções específicas de diferentes
+        # versões do Excel. A decisão de propagação ocorre após o cleanup.
+        operation_error = error
     finally:
-        if workbook is not None:
-            workbook.Close(SaveChanges=False)
-        if excel is not None:
-            try:
-                excel.EnableEvents = True
-                excel.Calculation = XL_CALCULATION_AUTOMATIC
-            except (pythoncom.com_error, AttributeError):
-                logger.debug(
-                    "Não foi possível restaurar todas as opções do Excel.",
-                    exc_info=True,
-                )
-            excel.Quit()
-        pythoncom.CoUninitialize()
+        cleanup_failures = _cleanup_excel_session(
+            workbook=workbook,
+            excel=excel,
+            pythoncom=pythoncom,
+            com_initialized=com_initialized,
+            close_save_changes=False,
+            original_settings=original_settings,
+            logger=logger,
+        )
+
+    fatal_cleanup_failures = [failure for failure in cleanup_failures if failure[2]]
+
+    if operation_error is not None:
+        error_type = (
+            ExcelDesktopCleanupError if fatal_cleanup_failures else ExcelDesktopError
+        )
+        public_error = error_type(
+            "O Excel Desktop não conseguiu criar a Tabela Dinâmica nativa. "
+            f"Detalhe técnico: {operation_error}"
+        )
+        _add_cleanup_notes(public_error, cleanup_failures)
+        raise public_error from operation_error
+
+    if fatal_cleanup_failures:
+        stage, cleanup_error, _ = fatal_cleanup_failures[0]
+        public_error = ExcelDesktopCleanupError(
+            "O Excel Desktop criou a Tabela Dinâmica, mas não conseguiu "
+            f"finalizar todos os recursos. Etapa: {stage}. "
+            f"Detalhe técnico: {cleanup_error}"
+        )
+        _add_cleanup_notes(public_error, cleanup_failures)
+        raise public_error from cleanup_error
 
     if saved:
         _set_calculation_on_open(output_file)
+    logger.info("Excel Desktop concluiu a Tabela Dinâmica nativa.")
     return False
 
 
@@ -238,9 +294,19 @@ def recalculate_only(
     excel = None
     workbook = None
     saved = False
-    pythoncom.CoInitialize()
+    com_initialized = False
+    operation_error: Exception | None = None
+    cleanup_failures: list[_CleanupFailure] = []
+    original_settings: dict[str, object] = {}
     try:
+        pythoncom.CoInitialize()
+        com_initialized = True
         excel = win32com.client.DispatchEx("Excel.Application")
+        original_settings = _capture_excel_settings(
+            excel,
+            _RECALCULATION_EXCEL_SETTINGS,
+            logger,
+        )
         excel.Visible = False
         excel.DisplayAlerts = False
         excel.ScreenUpdating = False
@@ -254,13 +320,170 @@ def recalculate_only(
         _wait_for_calculation(excel, timeout_seconds=30)
         workbook.Save()
         saved = True
-        logger.info("Fórmulas recalculadas pelo Excel Desktop.")
+    except Exception as error:  # noqa: BLE001
+        # Mantém o erro original para propagá-lo somente depois de liberar
+        # todos os recursos COM adquiridos.
+        operation_error = error
     finally:
-        if workbook is not None:
-            workbook.Close(SaveChanges=saved)
-        if excel is not None:
-            excel.Quit()
-        pythoncom.CoUninitialize()
+        cleanup_failures = _cleanup_excel_session(
+            workbook=workbook,
+            excel=excel,
+            pythoncom=pythoncom,
+            com_initialized=com_initialized,
+            close_save_changes=saved,
+            original_settings=original_settings,
+            logger=logger,
+        )
+
+    fatal_cleanup_failures = [failure for failure in cleanup_failures if failure[2]]
+
+    if operation_error is not None and fatal_cleanup_failures:
+        stage, cleanup_error, _ = fatal_cleanup_failures[0]
+        public_error = ExcelDesktopCleanupError(
+            "O Excel Desktop não concluiu o recálculo e também não conseguiu "
+            f"finalizar todos os recursos. Etapa: {stage}. "
+            f"Erro original: {operation_error}. "
+            f"Detalhe da limpeza: {cleanup_error}"
+        )
+        _add_cleanup_notes(public_error, cleanup_failures)
+        raise public_error from operation_error
+
+    if operation_error is not None:
+        _add_cleanup_notes(operation_error, cleanup_failures)
+        raise operation_error
+
+    if fatal_cleanup_failures:
+        stage, cleanup_error, _ = fatal_cleanup_failures[0]
+        public_error = ExcelDesktopCleanupError(
+            "O Excel Desktop recalculou o arquivo, mas não conseguiu "
+            f"finalizar todos os recursos. Etapa: {stage}. "
+            f"Detalhe técnico: {cleanup_error}"
+        )
+        _add_cleanup_notes(public_error, cleanup_failures)
+        raise public_error from cleanup_error
+
+    logger.info("Fórmulas recalculadas pelo Excel Desktop.")
+
+
+def _add_cleanup_notes(
+    error: BaseException,
+    failures: list[_CleanupFailure],
+) -> None:
+    """Acrescenta contexto das falhas secundárias sem substituir a principal."""
+
+    for stage, cleanup_error, _ in failures:
+        error.add_note(f"Falha adicional durante {stage}: {cleanup_error}")
+
+
+def _capture_excel_settings(
+    excel: object,
+    property_names: tuple[str, ...],
+    logger: logging.Logger,
+) -> dict[str, object]:
+    """Registra valores simples para restaurá-los se o encerramento falhar."""
+
+    settings: dict[str, object] = {}
+    for property_name in property_names:
+        try:
+            value = getattr(excel, property_name)
+        except Exception:
+            logger.debug(
+                "Não foi possível ler Excel.%s antes da automação.",
+                property_name,
+                exc_info=True,
+            )
+            value = _SAFE_EXCEL_SETTINGS[property_name]
+
+        if value is not None and not isinstance(value, (bool, int, float, str)):
+            value = _SAFE_EXCEL_SETTINGS[property_name]
+
+        settings[property_name] = value
+
+    return settings
+
+
+def _cleanup_excel_session(
+    *,
+    workbook: Any | None,
+    excel: Any | None,
+    pythoncom: Any,
+    com_initialized: bool,
+    close_save_changes: bool,
+    original_settings: dict[str, object],
+    logger: logging.Logger,
+) -> list[_CleanupFailure]:
+    """Libera cada recurso COM sem interromper as etapas seguintes."""
+
+    failures: list[_CleanupFailure] = []
+
+    if workbook is not None:
+        _attempt_cleanup(
+            stage="fechar a pasta de trabalho",
+            action=lambda: workbook.Close(SaveChanges=close_save_changes),
+            critical_without_primary=True,
+            failures=failures,
+            logger=logger,
+        )
+
+    quit_succeeded = True
+    if excel is not None:
+        quit_succeeded = _attempt_cleanup(
+            stage="encerrar o Excel Desktop",
+            action=lambda: excel.Quit(),
+            critical_without_primary=True,
+            failures=failures,
+            logger=logger,
+        )
+
+    if excel is not None and not quit_succeeded:
+        for property_name, value in reversed(original_settings.items()):
+            _attempt_cleanup(
+                stage=f"restaurar Excel.{property_name}",
+                action=lambda name=property_name, setting=value: setattr(
+                    excel,
+                    name,
+                    setting,
+                ),
+                critical_without_primary=False,
+                failures=failures,
+                logger=logger,
+            )
+
+    if com_initialized:
+        _attempt_cleanup(
+            stage="liberar a inicialização COM",
+            action=lambda: pythoncom.CoUninitialize(),
+            critical_without_primary=False,
+            failures=failures,
+            logger=logger,
+        )
+
+    return failures
+
+
+def _attempt_cleanup(
+    *,
+    stage: str,
+    action: Callable[[], object],
+    critical_without_primary: bool,
+    failures: list[_CleanupFailure],
+    logger: logging.Logger,
+) -> bool:
+    """Executa uma etapa de limpeza e registra a falha sem interromper o fluxo."""
+
+    try:
+        action()
+    except Exception as error:  # noqa: BLE001
+        failures.append((stage, error, critical_without_primary))
+        with suppress(Exception):
+            logger.warning(
+                "Falha durante a limpeza do Excel Desktop (%s): %s",
+                stage,
+                error,
+                exc_info=True,
+            )
+        return False
+    return True
 
 
 def _wait_for_calculation(excel, timeout_seconds: int) -> None:

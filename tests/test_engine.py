@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import pytest
 
 import src.core.engine as engine_module
-from src.core.exceptions import ExcelDesktopError
+from src.core.exceptions import ExcelDesktopCleanupError, ExcelDesktopError
 from src.core.models import (
     Policy,
     RunPaths,
@@ -301,6 +301,32 @@ def test_engine_falls_back_after_excel_desktop_error(
     warning_messages = [call.args[0] for call in harness.logger.warning.call_args_list]
     assert "%s" in warning_messages
     assert any("compatibilidade" in message for message in warning_messages)
+
+
+def test_engine_does_not_touch_locked_output_after_cleanup_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    harness = install_harness(
+        monkeypatch,
+        tmp_path,
+        native_available=True,
+        needs_fallback=False,
+    )
+    cleanup_error = ExcelDesktopCleanupError("Arquivo possivelmente bloqueado")
+    harness.native_create.side_effect = cleanup_error
+
+    with pytest.raises(ExcelDesktopCleanupError) as captured:
+        engine_module.AutomationEngine().run(
+            input_value=None,
+            candidate_name="Carlos Eduardo",
+        )
+
+    assert captured.value is cleanup_error
+    harness.fallback_create.assert_not_called()
+    harness.recalculate.assert_not_called()
+    harness.validate.assert_not_called()
+    harness.logger.error.assert_called_once()
 
 
 def test_engine_closes_primary_workbook_when_writer_fails(
