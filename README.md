@@ -917,6 +917,12 @@ Se o Excel Desktop não puder ser iniciado, o programa preserva a entrega criand
 um resumo equivalente com `SOMASES` e um gráfico comum. O log registra qual modo
 foi usado.
 
+Ao terminar uma sessão nativa, a automação tenta de forma independente fechar a
+pasta de trabalho, restaurar as configurações anteriores do Excel, encerrar o
+aplicativo e liberar a sessão COM. Uma falha em uma dessas etapas não impede as
+demais tentativas de limpeza. Se o Excel puder ter mantido o arquivo bloqueado, a
+execução é interrompida sem reabrir a saída para criar o fallback.
+
 ---
 
 # 17. Executar os testes
@@ -933,7 +939,7 @@ Execute:
 python -m pytest -q
 ```
 
-Resultado esperado na versão 1.4.0: 108 testes aprovados, sem falhas ou erros.
+Resultado esperado na versão 1.5.0: 126 testes aprovados, sem falhas ou erros.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -953,8 +959,8 @@ Meça a cobertura:
 python -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na versão 1.4.0, os 108 testes alcançam
-cobertura total de 91,76%, com medição de branches habilitada. O comando falhará
+O projeto exige cobertura mínima de 90%. Na versão 1.5.0, os 126 testes alcançam
+cobertura total de 97,92%, com medição de branches habilitada. O comando falhará
 se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
@@ -971,10 +977,12 @@ formatação e roda os testes com cobertura mínima de 90%.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. Na versão 1.4.0, as
+localmente em um computador Windows com Excel instalado. Na versão 1.5.0, as
 regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
-de fórmula. O CI valida as regras de negócio e os componentes que não dependem
-da interface do Excel.
+de fórmula. O modo nativo criou uma PivotTable, um gráfico e quatro regras de
+formatação condicional, manteve a aba de suporte oculta e encerrou sem deixar
+processos `EXCEL.EXE`. O CI valida as regras de negócio e os componentes que não
+dependem da interface do Excel.
 
 ## Governança da branch principal
 
@@ -989,7 +997,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os 108 testes automatizados verificam:
+Os 126 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -1006,7 +1014,8 @@ Os 108 testes automatizados verificam:
 - diagnóstico somente leitura, códigos de saída e consulta de versão;
 - escrita, fallback e validação final do arquivo;
 - compatibilidade da fachada após a decomposição interna do escritor;
-- ciclo de vida da integração com o Excel Desktop usando simulações isoladas.
+- ciclo de vida e limpeza resiliente da integração com o Excel Desktop usando
+  simulações isoladas.
 
 ---
 
@@ -1107,6 +1116,17 @@ python -m src.main
 ## `PermissionError`
 
 Feche os arquivos de entrada e saída no Excel e execute novamente.
+
+## O Excel não liberou todos os recursos
+
+Essa mensagem indica que a automação interrompeu a execução para não acessar
+novamente um arquivo que ainda pode estar bloqueado. Feche o Excel Desktop,
+confirme no Gerenciador de Tarefas que não há um processo `EXCEL.EXE` remanescente
+e tente novamente. Se o problema persistir, execute uma nova tentativa com:
+
+```powershell
+python -m src.main --nome "SEU NOME COMPLETO" --sem-pivot-nativo
+```
 
 ## A Tabela Dinâmica nativa não foi criada
 
