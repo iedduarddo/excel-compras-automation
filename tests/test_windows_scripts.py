@@ -275,3 +275,23 @@ def test_launcher_bootstraps_then_runs_and_propagates_status() -> None:
         "-File",
     ):
         assert required_token.casefold() in script.casefold()
+
+
+def test_launcher_pauses_only_for_argumentless_interactive_use() -> None:
+    script = read_script(LAUNCHER)
+
+    assert re.search(
+        r'if\s+"%~1"\s*==\s*""\s+set\s+"[^"]*PAUSE[^"]*=1"',
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert re.search(
+        r'if\s+"%\w*PAUSE\w*%"\s*==\s*"1"\s+pause',
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert not re.search(
+        r"(?m)^\s*pause\s*$",
+        script,
+        flags=re.IGNORECASE,
+    ), "A pausa não pode bloquear chamadas automatizadas com argumentos."
