@@ -6,6 +6,14 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.7.0 — 2026-07-29
+
 ### Adicionado
 
 - distribuição portátil `onedir` para Windows x64, construída com PyInstaller,
@@ -24,8 +32,8 @@ com versionamento semântico.
 - template de Pull Request atualizado para considerar a branch-base correta;
 - arquitetura atualizada com os caminhos de versão, diagnóstico e execução
   normal, além do estado concluído da decomposição do escritor;
-- documentação da governança e da regressão local atualizada para a versão
-  1.6.0;
+- documentação da governança e da regressão local alinhada ao fluxo vigente
+  desde a versão 1.6.0;
 - contrato do Engine alinhado ao retorno real da criação nativa, removendo uma
   segunda tentativa de recálculo que não possuía caminho executável;
 - resolução das pastas adaptada ao executável congelado, mantendo configuração,
@@ -35,11 +43,16 @@ com versionamento semântico.
 - diagnóstico do pywin32 ampliado para verificar `pythoncom`, `pywintypes` e
   `win32com.client` antes de considerar a integração nativa disponível.
 
-### Planejado
+### Validado
 
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
-- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+- 162 testes aprovados, com cobertura total de 98,44%;
+- CI aprovado no Windows com Python 3.11 e Python 3.14;
+- build `onedir` aprovado com PyInstaller 6.21.0 e Python 3.14.6;
+- smoke do pacote aprovado em caminho com espaços e sem Python externo;
+- regressões reais pelo pacote portátil aprovadas nos modos fallback e Excel
+  Desktop, com 40 solicitações e 0 erros de fórmula;
+- ZIP, checksum SHA-256, conteúdo permitido, pastas operacionais vazias e
+  identificação do commit conferidos nos artefatos do GitHub Actions.
 
 ## 1.6.0 — 2026-07-29
 

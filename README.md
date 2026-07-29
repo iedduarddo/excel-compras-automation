@@ -1039,8 +1039,8 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.6.0: 137 testes aprovados, sem falhas ou erros.
-A release v1.5.0 permanece registrada no `CHANGELOG.md` com os 126 testes
+Resultado esperado na release v1.7.0: 162 testes aprovados, sem falhas ou erros.
+A release v1.6.0 permanece registrada no `CHANGELOG.md` com os 137 testes
 validados naquela entrega.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
@@ -1061,8 +1061,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.6.0, os 137 testes
-alcançam cobertura total de 97,92%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.7.0, os 162 testes
+alcançam cobertura total de 98,44%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
@@ -1086,7 +1086,7 @@ cria uma GitHub Release em rascunho, sem substituir assets existentes.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. Na versão 1.6.0, as
+localmente em um computador Windows com Excel instalado. Na versão 1.7.0, as
 regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
 de fórmula. O modo nativo criou uma PivotTable, um gráfico e quatro regras de
 formatação condicional, manteve a aba de suporte oculta e encerrou sem deixar
@@ -1111,7 +1111,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os 137 testes automatizados verificam:
+Os 162 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -1127,6 +1127,8 @@ Os 137 testes automatizados verificam:
 - orquestração do motor e comportamento da interface de linha de comando;
 - diagnóstico somente leitura, códigos de saída e consulta de versão;
 - contratos de `setup.ps1`, `run.ps1` e `iniciar.cmd`;
+- montagem, conteúdo permitido, launchers e checksum da distribuição portátil;
+- contratos dos workflows de empacotamento e publicação em rascunho;
 - escrita, fallback e validação final do arquivo;
 - compatibilidade da fachada após a decomposição interna do escritor;
 - ciclo de vida e limpeza resiliente da integração com o Excel Desktop usando
