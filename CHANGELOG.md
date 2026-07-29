@@ -6,6 +6,16 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Alterado
+
+- fluxo de contribuição alinhado ao uso de branches curtas para `develop` e
+  branches de release para `main`;
+- template de Pull Request atualizado para considerar a branch-base correta;
+- arquitetura atualizada com os caminhos de versão, diagnóstico e execução
+  normal, além do estado concluído da decomposição do escritor;
+- documentação da governança e da regressão local atualizada para a versão
+  1.6.0.
+
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;

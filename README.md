@@ -1026,21 +1026,26 @@ formatação e roda os testes com cobertura mínima de 90%.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. Na versão 1.5.0, as
+localmente em um computador Windows com Excel instalado. Na versão 1.6.0, as
 regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
 de fórmula. O modo nativo criou uma PivotTable, um gráfico e quatro regras de
 formatação condicional, manteve a aba de suporte oculta e encerrou sem deixar
 processos `EXCEL.EXE`. O CI valida as regras de negócio e os componentes que não
 dependem da interface do Excel.
 
-## Governança da branch principal
+## Governança das branches
 
-A branch `main` é protegida. Toda mudança deve passar por um Pull Request com:
+A branch `main` representa a versão publicada e é protegida. Mudanças comuns
+nascem em branches curtas criadas a partir da `develop` e chegam a ela por Pull
+Request. Uma publicação usa uma branch `release/vX.Y.Z`, também criada a partir
+da `develop`, e chega à `main` por outro Pull Request.
 
-- branch atualizada em relação à `main`;
+Todo merge exige:
+
+- branch atualizada em relação à branch-base do Pull Request;
 - checks `Python 3.11` e `Python 3.14` aprovados;
 - todas as conversas resolvidas;
-- bloqueio de force push e exclusão da branch.
+- conferência do escopo e do commit efetivamente revisado.
 
 Como este é um projeto individual, nenhuma aprovação externa é obrigatória. O
 fluxo completo de desenvolvimento, validação e merge está documentado em
