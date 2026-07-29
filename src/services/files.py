@@ -39,6 +39,7 @@ def resolve_input_file(value: str | Path | None) -> Path:
             )
         return path
 
+    ensure_project_directories()
     candidates = sorted(
         (
             path

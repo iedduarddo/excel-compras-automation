@@ -58,6 +58,20 @@ def test_resolve_input_file_accepts_supported_explicit_file(tmp_path: Path) -> N
     assert result == workbook.resolve()
 
 
+def test_resolve_input_file_explicit_input_does_not_create_operational_folders(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    directories = configure_temporary_directories(monkeypatch, tmp_path)
+    workbook = tmp_path / "Viagens.xlsx"
+    workbook.write_bytes(b"conteudo")
+
+    result = files.resolve_input_file(workbook)
+
+    assert result == workbook.resolve()
+    assert all(not path.exists() for path in directories.values())
+
+
 @pytest.mark.parametrize(
     ("filename", "expected_message"),
     [
@@ -102,10 +116,11 @@ def test_resolve_input_file_reports_empty_and_ambiguous_directories(
 ) -> None:
     directories = configure_temporary_directories(monkeypatch, tmp_path)
     input_dir = directories["INPUT_DIR"]
-    input_dir.mkdir()
 
     with pytest.raises(AutomationError, match="Nenhuma planilha"):
         files.resolve_input_file(None)
+
+    assert all(path.is_dir() for path in directories.values())
 
     (input_dir / "b.xlsx").write_bytes(b"b")
     (input_dir / "a.xlsx").write_bytes(b"a")
