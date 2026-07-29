@@ -40,6 +40,17 @@ src.main
       arquivo em output
 ```
 
+Há duas superfícies de execução com o mesmo contrato:
+
+- código-fonte: `iniciar.cmd` → `run.ps1` → `.venv\Scripts\python.exe`;
+- pacote portátil: `iniciar.cmd` → `run.ps1` →
+  `ExcelComprasAutomation.exe`.
+
+Os launchers preferem o executável quando ele está presente. Em modo congelado,
+`src/settings.py` usa a pasta de `sys.executable` como raiz persistente. Assim,
+configuração e artefatos nunca são gravados dentro de `_internal` ou em uma
+pasta temporária do PyInstaller.
+
 ## Responsabilidades
 
 ### `src/main.py`
@@ -117,6 +128,29 @@ Contém operações reutilizáveis de arquivos, logging e texto. O módulo
 estrutura da planilha e a disponibilidade da integração nativa sem iniciar o
 Excel Desktop nem gerar artefatos operacionais.
 
+### `scripts/build_portable.py`
+
+Orquestra a distribuição Windows x64. Confere versões, chama o PyInstaller,
+monta uma allowlist, valida as DLLs COM, executa smoke tests fora do repositório
+e cria um ZIP acompanhado de SHA-256.
+
+### `packaging/ExcelComprasAutomation.spec`
+
+Define um executável de console em modo `onedir`, com dependências em
+`_internal`, sem UPX e com imports explícitos de `pythoncom`, `pywintypes` e
+`win32com.client`. Os arquivos JSON não são embutidos: permanecem externos para
+serem auditáveis e editáveis.
+
+### Workflows de distribuição
+
+- `package-windows.yml` produz um candidato temporário para cada mudança
+  relevante ao pacote;
+- `release-windows.yml` aceita somente uma tag anotada sobre a `main`, cria os
+  bytes oficiais e abre a GitHub Release em rascunho.
+
+O runner hospedado valida o fallback sem iniciar o Excel. A PivotTable nativa
+continua exigindo regressão local com o Microsoft Excel Desktop.
+
 ## Decisões
 
 - O original nunca é salvo.
@@ -128,6 +162,9 @@ Excel Desktop nem gerar artefatos operacionais.
 - O fallback mantém o projeto executável fora do Excel Desktop.
 - O Engine depende da fachada `workbook_writer.py`; os módulos `writer_*` ficam
   encapsulados como detalhes da camada de Excel.
+- No pacote congelado, dados graváveis e configuração pertencem à pasta do
+  executável, enquanto o runtime permanece em `_internal`.
+- O ZIP oficial nunca contém planilhas reais, saídas, backups ou logs.
 
 ## Evolução sugerida
 

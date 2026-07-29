@@ -278,6 +278,19 @@ Atualize:
 - `CHANGELOG.md`;
 - `README.md`, quando houver instruções ou números específicos da versão.
 
+Quando a mudança afeta a distribuição Windows, valide também:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\python.exe scripts\build_portable.py `
+    --expected-version X.Y.Z `
+    --commit (git rev-parse HEAD)
+```
+
+Esse comando executa o build e o smoke test sem Excel, depois cria em `dist` o
+ZIP `ExcelComprasAutomation-vX.Y.Z-windows-x64.zip` e o respectivo `.sha256`.
+Esses arquivos são gerados, não rastreados pelo Git.
+
 Abra um PR da branch `release/vX.Y.Z` para `main`. Crie a tag anotada somente
 depois do merge, do CI de `push` da `main` e sobre o commit final validado:
 
@@ -288,13 +301,19 @@ git tag -a vX.Y.Z COMMIT_FINAL -m "Versão X.Y.Z"
 git push origin vX.Y.Z
 ```
 
-Publique a GitHub Release, sincronize `develop` com `main` por fast-forward,
-aguarde o CI final da `develop` e somente então remova a branch de release. Ao
-final, `main`, `develop`, `origin/main` e `origin/develop` devem apontar para o
-mesmo commit.
+Ao receber a tag, `release-windows.yml` confirma que ela é anotada e aponta para
+a `main`, reconstrói o pacote com Python 3.14.6 e cria uma GitHub Release em
+rascunho com o ZIP e o checksum. Baixe exatamente esse asset, confira o SHA-256
+e execute as regressões fallback e nativa em uma máquina Windows x64. Publique o
+rascunho somente depois dessa validação, sem substituir os assets.
 
-Nunca inclua a planilha de entrada ou o arquivo de saída nos anexos da release.
-O código-fonte e a documentação do repositório são suficientes.
+Depois, sincronize `develop` com `main` por fast-forward, aguarde o CI final da
+`develop` e somente então remova a branch de release. Ao final, `main`,
+`develop`, `origin/main` e `origin/develop` devem apontar para o mesmo commit.
+
+Nunca inclua planilhas de entrada, saídas, backups ou logs nos anexos da
+release. Para versões com distribuição portátil, os únicos assets esperados são
+o ZIP Windows x64 e seu `.sha256`.
 
 ## Relatar um problema
 

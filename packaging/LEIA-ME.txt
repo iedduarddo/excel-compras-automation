@@ -1,0 +1,44 @@
+EXCEL COMPRAS AUTOMATION - PACOTE PORTATIL WINDOWS 11 X64
+=========================================================
+
+COMO USAR
+
+1. Extraia TODO o arquivo ZIP para uma pasta gravavel, por exemplo:
+   Documentos\ExcelComprasAutomation
+2. Nao execute dentro do ZIP e nao mova somente o arquivo .exe.
+3. Copie uma unica planilha .xlsx ou .xlsm para a pasta input.
+4. De duplo clique em iniciar.cmd.
+5. Informe nome e sobrenome quando solicitado.
+
+O pacote nao precisa de Python, .venv ou internet. O Microsoft Excel Desktop e
+opcional; sem ele, a aplicacao usa o resumo compativel por formulas.
+
+COMANDOS UTEIS
+
+.\iniciar.cmd -Version
+.\iniciar.cmd -Diagnostico
+.\iniciar.cmd -Help
+.\iniciar.cmd -NomeCompleto "NOME SOBRENOME"
+.\iniciar.cmd -NomeCompleto "NOME SOBRENOME" -SemPivotNativo
+.\iniciar.cmd -Arquivo ".\input\minha_planilha.xlsx" -NomeCompleto "NOME SOBRENOME"
+
+INTEGRIDADE
+
+Antes de extrair, abra o PowerShell na pasta em que o ZIP foi baixado e execute:
+
+Get-FileHash .\ExcelComprasAutomation-vX.Y.Z-windows-x64.zip -Algorithm SHA256
+
+Compare o resultado com:
+
+ExcelComprasAutomation-vX.Y.Z-windows-x64.zip.sha256
+
+O executavel ainda nao possui assinatura de codigo. O Windows SmartScreen pode
+exibir um aviso; confirme a origem oficial e o SHA-256 antes de continuar.
+
+ATUALIZACAO
+
+Extraia uma nova versao em outra pasta. Migre somente suas planilhas e qualquer
+alteracao deliberada em config. Nao sobreponha a pasta _internal de uma versao
+antiga.
+
+Mais detalhes: README_PORTATIL.md e docs\SOLUCAO_DE_PROBLEMAS.md

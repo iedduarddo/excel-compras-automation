@@ -1,5 +1,29 @@
 # Solução de problemas
 
+## Pacote portátil
+
+Se você baixou `ExcelComprasAutomation-vX.Y.Z-windows-x64.zip`, extraia todo o
+conteúdo antes de executar. O pacote não precisa de Python, `.venv`,
+`setup.ps1` ou internet.
+
+Não mova somente `ExcelComprasAutomation.exe`. Ele precisa permanecer ao lado de
+`_internal`, `config`, `run.ps1` e `iniciar.cmd`. Use uma pasta gravável do seu
+usuário; evite executar dentro do ZIP ou de `Program Files`.
+
+Confira primeiro:
+
+```powershell
+.\iniciar.cmd -Version
+.\iniciar.cmd -Diagnostico
+```
+
+Se o Windows SmartScreen exibir um aviso, confirme que o ZIP veio da GitHub
+Release oficial e compare seu SHA-256 com o arquivo `.sha256` publicado junto
+dele. O executável ainda não possui assinatura de código.
+
+As instruções de `.venv`, `setup.ps1` e instalação de bibliotecas abaixo se
+aplicam apenas à execução pelo código-fonte.
+
 ## Primeira execução
 
 O caminho recomendado é dar duplo clique em `iniciar.cmd`. Se a `.venv` ainda

@@ -30,8 +30,10 @@ def install_fake_com_modules(
     client.DispatchEx = Mock(return_value=excel)
     win32com = ModuleType("win32com")
     win32com.client = client
+    pywintypes = ModuleType("pywintypes")
 
     monkeypatch.setitem(sys.modules, "pythoncom", pythoncom)
+    monkeypatch.setitem(sys.modules, "pywintypes", pywintypes)
     monkeypatch.setitem(sys.modules, "win32com", win32com)
     monkeypatch.setitem(sys.modules, "win32com.client", client)
     return pythoncom, client
@@ -440,26 +442,39 @@ def test_pywin32_availability_short_circuits_outside_windows(
     assert desktop.pywin32_is_available() is False
 
 
-def test_pywin32_availability_handles_missing_and_present_import(
+@pytest.mark.parametrize(
+    "missing_module",
+    ["pythoncom", "pywintypes", "win32com.client"],
+)
+def test_pywin32_availability_handles_each_missing_import(
     monkeypatch: pytest.MonkeyPatch,
+    missing_module: str,
 ) -> None:
     monkeypatch.setattr(desktop.platform, "system", lambda: "Windows")
     original_import = builtins.__import__
 
     def missing_import(name: str, *args: object, **kwargs: object) -> object:
-        if name == "win32com.client":
+        if name == missing_module:
             raise ImportError("ausente")
         return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", missing_import)
     assert desktop.pywin32_is_available() is False
 
+
+def test_pywin32_availability_accepts_complete_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(desktop.platform, "system", lambda: "Windows")
+    pythoncom = ModuleType("pythoncom")
+    pywintypes = ModuleType("pywintypes")
     client = ModuleType("win32com.client")
     win32com = ModuleType("win32com")
     win32com.client = client
+    monkeypatch.setitem(sys.modules, "pythoncom", pythoncom)
+    monkeypatch.setitem(sys.modules, "pywintypes", pywintypes)
     monkeypatch.setitem(sys.modules, "win32com", win32com)
     monkeypatch.setitem(sys.modules, "win32com.client", client)
-    monkeypatch.setattr(builtins, "__import__", original_import)
 
     assert desktop.pywin32_is_available() is True
 

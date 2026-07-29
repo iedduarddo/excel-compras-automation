@@ -6,6 +6,17 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- distribuição portátil `onedir` para Windows x64, construída com PyInstaller,
+  configuração externa editável e execução sem Python, `.venv` ou internet;
+- script único de build que valida versões, conteúdo permitido, DLLs do
+  pywin32, execução em caminho com espaços, diagnóstico somente leitura,
+  regressão fallback, ZIP estável e checksum SHA-256;
+- workflows separados para gerar candidatos de inspeção e criar uma GitHub
+  Release em rascunho a partir de uma tag anotada;
+- documentação própria do pacote e testes dos contratos de empacotamento.
+
 ### Alterado
 
 - fluxo de contribuição alinhado ao uso de branches curtas para `develop` e
@@ -14,14 +25,21 @@ com versionamento semântico.
 - arquitetura atualizada com os caminhos de versão, diagnóstico e execução
   normal, além do estado concluído da decomposição do escritor;
 - documentação da governança e da regressão local atualizada para a versão
-  1.6.0.
+  1.6.0;
 - contrato do Engine alinhado ao retorno real da criação nativa, removendo uma
-  segunda tentativa de recálculo que não possuía caminho executável.
+  segunda tentativa de recálculo que não possuía caminho executável;
+- resolução das pastas adaptada ao executável congelado, mantendo configuração,
+  entrada, saída, backup e logs ao lado do pacote;
+- `run.ps1` e `iniciar.cmd` agora preferem o executável portátil e preservam o
+  fluxo existente por código-fonte quando ele não está presente;
+- diagnóstico do pywin32 ampliado para verificar `pythoncom`, `pywintypes` e
+  `win32com.client` antes de considerar a integração nativa disponível.
 
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- preparar empacotamento e interface para usuários não técnicos.
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
 
 ## 1.6.0 — 2026-07-29
 

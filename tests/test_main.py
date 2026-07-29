@@ -225,8 +225,8 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert '[Alias("Diagnostic")]' in script
     assert "[switch]$Diagnostico" in script
     assert "[switch]$Version" in script
-    assert '$PythonArguments += "--diagnostico"' in script
-    assert '$PythonArguments += "--version"' in script
+    assert '$ApplicationArguments += "--diagnostico"' in script
+    assert '$ApplicationArguments += "--version"' in script
     assert "if ($Diagnostico -and $Version)" in script
     assert "if ($Version)" in script
     assert "if ($Diagnostico)" in script

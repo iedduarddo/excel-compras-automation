@@ -230,6 +230,37 @@ def test_run_preserves_public_switches_and_exit_code() -> None:
     assert direct_exit or captured_status_is_returned
 
 
+def test_run_prefers_portable_executable_and_keeps_venv_fallback() -> None:
+    script = read_script(RUN_SCRIPT)
+
+    assert "ExcelComprasAutomation.exe" in script
+    assert re.search(
+        r"Test-Path[\s\S]{0,300}(?:PortableExecutable|"
+        r"ExcelComprasAutomation\.exe)",
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert re.search(
+        r"if\s*\([^)]*(?:UsePortableExecutable|PortableExecutable)"
+        r"[^)]*\)\s*\{[\s\S]{0,300}&\s*\$PortableExecutable",
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert ".venv\\Scripts\\python.exe" in script
+    assert re.search(
+        r"else\s*\{[\s\S]{0,300}&\s*\$VenvPython",
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert "VERSAO.txt" in script
+    assert re.search(
+        r"(?:pacote portatil|pacote portátil)[\s\S]{0,300}"
+        r"(?:incompleto|extraia novamente)",
+        script,
+        flags=re.IGNORECASE,
+    )
+
+
 def test_launcher_bootstraps_then_runs_and_propagates_status() -> None:
     script = read_script(LAUNCHER)
 
@@ -275,6 +306,28 @@ def test_launcher_bootstraps_then_runs_and_propagates_status() -> None:
         "-File",
     ):
         assert required_token.casefold() in script.casefold()
+
+
+def test_launcher_uses_portable_executable_before_bootstrap() -> None:
+    script = read_script(LAUNCHER)
+    portable_position = script.casefold().index("portable_exe")
+    venv_position = script.casefold().index("venv_python")
+    setup_position = script.casefold().index("setup.ps1")
+
+    assert "ExcelComprasAutomation.exe" in script
+    assert portable_position < venv_position < setup_position
+    assert re.search(
+        r"if\s+exist\s+\"%PORTABLE_EXE%\"\s+goto\s+:run",
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert re.search(
+        r"if\s+exist\s+\"%PROJECT_ROOT%VERSAO\.txt\"\s+"
+        r"goto\s+:portable_incomplete",
+        script,
+        flags=re.IGNORECASE,
+    )
+    assert ":portable_incomplete" in script
 
 
 def test_launcher_pauses_only_for_argumentless_interactive_use() -> None:
