@@ -6,8 +6,9 @@ Automação em Python para o **Teste Prático de Excel — Analista de Compras |
 Célula de Reservas**.
 
 Este projeto foi preparado para Windows 11 e para uma pessoa que nunca utilizou
-Python ou Visual Studio Code. Siga a ordem dos capítulos. Não é necessário
-entender todo o código antes da primeira execução.
+Python. O Visual Studio Code é opcional: ele ajuda a estudar ou editar o projeto,
+mas não é necessário para executar a automação. Não é preciso entender todo o
+código antes da primeira execução.
 
 O programa:
 
@@ -37,56 +38,46 @@ O arquivo da pasta `input` não é alterado.
 
 # Início rápido
 
-Use esta seção somente depois de instalar o Python e o VS Code conforme os
-capítulos seguintes.
+Instale uma versão do Python entre 3.11 e 3.14, extraia o projeto do `.zip` e
+coloque uma única planilha `.xlsx` ou `.xlsm` na pasta `input`. Depois, na pasta
+principal, dê duplo clique em:
 
-Na pasta principal do projeto, execute:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```text
+iniciar.cmd
 ```
 
-Depois execute:
+Na primeira execução, o iniciador cria as pastas operacionais, localiza um Python
+compatível, cria a `.venv` e instala as dependências. Nas próximas execuções, a
+mesma `.venv` é verificada e reutilizada. Quando aberto por duplo clique, o
+iniciador mantém a janela aberta ao final para que as mensagens possam ser lidas.
+
+O programa encontra automaticamente a única planilha e solicita o nome completo.
+Se houver mais de uma, ele interrompe a execução, lista as entradas e orienta
+como indicar a escolhida pelo terminal:
 
 ```powershell
-.\run.ps1 -NomeCompleto "SEU NOME COMPLETO"
+.\iniciar.cmd -Arquivo ".\input\minha_planilha.xlsx"
 ```
 
-Exemplo:
+Com argumentos, o iniciador não pausa ao final e devolve o código de saída ao
+terminal. Consulte todas as opções com:
 
 ```powershell
-.\run.ps1 -NomeCompleto "Maria Aparecida da Silva"
+.\run.ps1 -Help
+.\run.ps1 -h
 ```
 
-Se o PowerShell bloquear também o segundo comando:
+O diagnóstico verifica o ambiente e a estrutura da planilha sem pedir nome e sem
+criar backup, saída ou log. A consulta de versão também não cria artefatos
+operacionais:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\run.ps1 -NomeCompleto "Maria Aparecida da Silva"
+.\iniciar.cmd -Diagnostico
+.\iniciar.cmd -Version
 ```
 
-Para verificar o ambiente e a estrutura da planilha sem pedir nome e sem criar
-backup, saída ou log:
-
-```powershell
-.\run.ps1 -Diagnostico
-```
-
-`-Diagnostic` é um alias equivalente. O comando mostra `[OK]`, `[AVISO]` ou
-`[ERRO]` para cada verificação. Avisos não impedem o status `AMBIENTE PRONTO`;
-erros resultam em `AMBIENTE REQUER ATENÇÃO` e código de saída 1.
-
-Para consultar a versão instalada:
-
-```powershell
-.\run.ps1 -Version
-```
-
-Os mesmos recursos estão disponíveis diretamente pela interface Python:
-
-```powershell
-.\.venv\Scripts\python.exe -m src.main --diagnostico
-.\.venv\Scripts\python.exe -m src.main --version
-```
+`-Diagnostic` é um alias equivalente a `-Diagnostico`. Se a `.venv` ainda não
+existir, `iniciar.cmd` prepara o ambiente antes de encaminhar qualquer opção.
 
 ---
 
@@ -96,15 +87,18 @@ Você precisará de:
 
 - Windows 11;
 - acesso à internet durante a instalação;
-- Python 3;
-- Visual Studio Code;
+- Python 3.11, 3.12, 3.13 ou 3.14;
 - Microsoft Excel Desktop para criar a Tabela Dinâmica nativa;
-- a planilha do teste em formato `.xlsx`;
+- a planilha do teste em formato `.xlsx` ou `.xlsm`;
 - alguns minutos para instalar as bibliotecas.
+
+O Visual Studio Code e suas extensões são opcionais e recomendados somente para
+quem deseja estudar, demonstrar ou modificar o código.
 
 O Excel não precisa ficar aberto. A automação abre uma instância invisível,
 cria a Tabela Dinâmica a partir de uma fonte estática validada, configura as
-fórmulas para recálculo automático na próxima abertura e fecha o programa.
+fórmulas para recálculo automático na próxima abertura e solicita o encerramento
+do programa. O Windows pode concluir a liberação do processo de forma assíncrona.
 
 Importante:
 
@@ -184,7 +178,7 @@ Um terminal que já estava aberto pode não reconhecer a instalação.
 Execute:
 
 ```powershell
-py -3 --version
+py -3.14 --version
 ```
 
 O resultado deverá ser parecido com:
@@ -193,8 +187,8 @@ O resultado deverá ser parecido com:
 Python 3.13.14
 ```
 
-Os números podem ser diferentes. Isso não é um problema, desde que seja uma das
-versões suportadas.
+Você também pode substituir `3.14` por `3.13`, `3.12` ou `3.11`. O número de
+correção pode ser diferente.
 
 Verifique o instalador de bibliotecas:
 
@@ -225,7 +219,10 @@ Prefira o comando `py -3`. Se também quiser corrigir os aliases:
 
 ---
 
-# 3. Instalar o Visual Studio Code
+# 3. Opcional: instalar o Visual Studio Code
+
+O VS Code não é necessário para usar `iniciar.cmd`. Instale-o se quiser estudar
+o código, executar testes ou apresentar os detalhes técnicos do projeto.
 
 ## 3.1. Baixar
 
@@ -270,9 +267,10 @@ pelo menu Iniciar.
 
 ---
 
-# 4. Instalar as extensões do VS Code
+# 4. Opcional: instalar as extensões do VS Code
 
-As extensões adicionam suporte a Python dentro do editor.
+As extensões adicionam suporte a Python dentro do editor, mas não são usadas pelo
+iniciador da automação.
 
 ## 4.1. Abrir a tela de extensões
 
@@ -281,7 +279,7 @@ No VS Code:
 1. clique no ícone `Extensions` na barra lateral esquerda; ou
 2. pressione `Ctrl + Shift + X`.
 
-## 4.2. Extensões obrigatórias
+## 4.2. Extensões recomendadas para desenvolvimento
 
 Pesquise e instale:
 
@@ -307,7 +305,7 @@ Code também poderá sugerir essas extensões.
 Você pode instalar Jupyter e um visualizador de Excel, mas eles não são
 necessários para executar este programa.
 
-Pelo terminal, as extensões obrigatórias também podem ser instaladas com:
+Pelo terminal, as extensões recomendadas também podem ser instaladas com:
 
 ```powershell
 code --install-extension ms-python.python
@@ -335,9 +333,9 @@ C:\Users\SEU_USUARIO\Projects\ExcelComprasAutomation
 
 Não execute o projeto diretamente de dentro do `.zip`.
 
-## 5.2. Abrir a pasta correta
+## 5.2. Opcional: abrir a pasta no VS Code
 
-No VS Code:
+Se estiver usando o VS Code:
 
 1. clique em `File`;
 2. clique em `Open Folder`;
@@ -348,7 +346,7 @@ No VS Code:
 Se o VS Code perguntar se você confia nos arquivos, escolha confiar porque esta
 é a pasta do seu próprio projeto.
 
-## 5.3. Abrir o terminal integrado
+## 5.3. Opcional: abrir o terminal integrado
 
 No VS Code:
 
@@ -386,7 +384,9 @@ Se aparecer `False`, a pasta errada foi aberta.
 
 # 6. Preparar o ambiente automaticamente
 
-Este é o método recomendado.
+O método recomendado é dar duplo clique em `iniciar.cmd`. Quando a `.venv` não
+existe, ele chama `setup.ps1` automaticamente. Também é possível executar apenas
+a preparação pelo terminal:
 
 Na raiz do projeto:
 
@@ -396,11 +396,15 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1
 
 O script:
 
-1. verifica o Python;
-2. cria a pasta `.venv`;
-3. atualiza o `pip`;
-4. instala as bibliotecas de `requirements.txt`;
-5. executa `pip check`.
+1. cria, se necessário, `input`, `output`, `backup` e `logs`;
+2. localiza uma versão suportada do Python, entre 3.11 e 3.14;
+3. cria ou valida a pasta `.venv`, sem apagar um ambiente existente;
+4. atualiza o `pip`;
+5. instala as bibliotecas de `requirements.txt` e executa `pip check`.
+
+Cada comando externo tem seu código de saída verificado. Se uma etapa falhar, o
+script interrompe a preparação e não informa um falso sucesso. Executá-lo
+novamente é seguro: as pastas e uma `.venv` compatível são reutilizadas.
 
 O final esperado é:
 
@@ -421,17 +425,22 @@ Não envie a pasta `.venv` para o GitHub. Ela pode ser recriada com
 # 7. Preparar o ambiente manualmente
 
 Use este capítulo se quiser entender cada comando ou se `setup.ps1` não puder
-ser utilizado.
+ser utilizado. A ativação manual da `.venv` não é necessária para `iniciar.cmd`
+ou `run.ps1`.
 
 ## 7.1. Criar o ambiente
 
 ```powershell
-py -3 -m venv .venv
+py -3.14 -m venv .venv
 ```
+
+Se o Python 3.14 não estiver instalado, use `-3.13`, `-3.12` ou `-3.11`.
 
 É normal o comando terminar sem mostrar mensagem.
 
 ## 7.2. Ativar
+
+Esta etapa é opcional e serve somente para executar comandos Python manualmente:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -465,7 +474,7 @@ Não use uma política `Unrestricted` para o computador inteiro.
 ## 7.4. Verificar o Python do ambiente
 
 ```powershell
-python -c "import sys; print(sys.executable)"
+.\.venv\Scripts\python.exe -c "import sys; print(sys.executable)"
 ```
 
 O caminho deverá terminar em:
@@ -477,27 +486,27 @@ ExcelComprasAutomation\.venv\Scripts\python.exe
 Também é possível verificar:
 
 ```powershell
-where.exe python
+Get-Command .\.venv\Scripts\python.exe | Select-Object -ExpandProperty Source
 ```
 
-O primeiro caminho deverá apontar para `.venv`.
+O caminho deverá apontar para `.venv`.
 
 ## 7.5. Instalar as bibliotecas
 
 ```powershell
-python -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
 ```
 
 Depois:
 
 ```powershell
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Confira conflitos:
 
 ```powershell
-python -m pip check
+.\.venv\Scripts\python.exe -m pip check
 ```
 
 Resultado ideal:
@@ -509,7 +518,7 @@ No broken requirements found.
 Teste as duas bibliotecas principais:
 
 ```powershell
-python -c "import openpyxl, win32com.client; print('Bibliotecas instaladas com sucesso.')"
+.\.venv\Scripts\python.exe -c "import openpyxl, win32com.client; print('Bibliotecas instaladas com sucesso.')"
 ```
 
 ## 7.6. Por que há poucas bibliotecas
@@ -526,12 +535,15 @@ manutenção.
 Para executar os testes, instale:
 
 ```powershell
-python -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
 ---
 
-# 8. Selecionar o interpretador no VS Code
+# 8. Opcional: selecionar o interpretador no VS Code
+
+Esta configuração é útil para desenvolvimento. Ela não é necessária para
+executar `iniciar.cmd`, `setup.ps1` ou `run.ps1`.
 
 Criar o ambiente e selecionar o interpretador são etapas diferentes.
 
@@ -566,35 +578,39 @@ Depois, feche o terminal atual e abra outro.
 
 # 9. Preparar a planilha de entrada
 
-O arquivo esperado é:
+Coloque na pasta `input` a planilha que será processada. São aceitos arquivos
+`.xlsx` e `.xlsm`, com qualquer nome. Exemplo:
 
 ```text
-input\teste_excel_analista_compras_celula_reservas.xlsx
+input\minha_planilha_de_compras.xlsx
 ```
 
-Se ele já estiver na pasta `input`, não é necessário copiá-lo novamente.
+Quando existe uma única planilha válida, ela é selecionada automaticamente.
 
 Para trabalhar com outra cópia:
 
 1. feche a planilha no Excel;
 2. copie o arquivo original;
 3. cole a cópia dentro de `input`;
-4. mantenha a extensão `.xlsx`.
+4. mantenha a extensão `.xlsx` ou `.xlsm`.
 
 Pelo PowerShell:
 
 ```powershell
-Copy-Item -LiteralPath "$env:USERPROFILE\Downloads\teste_excel_analista_compras_celula_reservas.xlsx" -Destination ".\input\teste_excel_analista_compras_celula_reservas.xlsx"
+Copy-Item -LiteralPath "$env:USERPROFILE\Downloads\minha_planilha.xlsx" `
+    -Destination ".\input\"
 ```
 
 Confirme:
 
 ```powershell
-Get-Item ".\input\teste_excel_analista_compras_celula_reservas.xlsx" |
+Get-ChildItem ".\input\*.xlsx", ".\input\*.xlsm" |
     Select-Object Name, Length, LastWriteTime
 ```
 
 Não selecione arquivos temporários que começam com `~$`.
+Se houver mais de uma planilha válida, use `-Arquivo` para indicar explicitamente
+qual delas será processada.
 
 ---
 
@@ -602,49 +618,79 @@ Não selecione arquivos temporários que começam com `~$`.
 
 ## 10.1. Forma mais fácil
 
+Com uma única planilha na pasta `input`, dê duplo clique em `iniciar.cmd` ou
+execute:
+
 ```powershell
-.\run.ps1 -NomeCompleto "SEU NOME COMPLETO"
+.\iniciar.cmd
 ```
 
-Exemplo:
+O iniciador prepara o ambiente quando necessário, executa `run.ps1` e solicita o
+nome completo. Para informar os valores diretamente:
 
 ```powershell
-.\run.ps1 -NomeCompleto "Maria Aparecida da Silva"
+.\iniciar.cmd -NomeCompleto "Maria Aparecida da Silva"
+```
+
+Use `-Arquivo` somente quando houver mais de uma planilha, quando a entrada
+estiver fora de `input` ou quando quiser escolher explicitamente:
+
+```powershell
+.\iniciar.cmd `
+    -NomeCompleto "Maria Aparecida da Silva" `
+    -Arquivo ".\input\compras_julho.xlsm"
 ```
 
 Use aspas quando o nome ou o caminho tiver espaços.
 
-## 10.2. Forma direta em Python
+## 10.2. Forma direta em PowerShell
 
-Ative a `.venv` e execute:
+Se a `.venv` já estiver preparada, é possível ignorar o iniciador:
 
 ```powershell
-python -m src.main --input ".\input\teste_excel_analista_compras_celula_reservas.xlsx" --candidate-name "SEU NOME COMPLETO"
+.\run.ps1
+```
+
+Esse comando também solicita o nome e autodetecta a única planilha válida.
+Consulte os parâmetros, aliases e exemplos disponíveis:
+
+```powershell
+.\run.ps1 -Help
+.\run.ps1 -h
+```
+
+## 10.3. Forma direta em Python
+
+Não é necessário ativar a `.venv`:
+
+```powershell
+.\.venv\Scripts\python.exe -m src.main --candidate-name "SEU NOME COMPLETO"
 ```
 
 O argumento também aceita `--nome`:
 
 ```powershell
-python -m src.main --nome "SEU NOME COMPLETO"
+.\.venv\Scripts\python.exe -m src.main --nome "SEU NOME COMPLETO"
 ```
 
 Se `--input` for omitido, o programa usará a única planilha encontrada na pasta
-`input`. Se houver mais de uma, ele pedirá que você indique o caminho.
+`input`. Se houver mais de uma, ele interromperá a execução, informará os nomes
+encontrados e orientará o uso de `--input`.
 
-## 10.3. Executar sem Excel Desktop
+## 10.4. Executar sem Excel Desktop
 
 ```powershell
-python -m src.main --nome "SEU NOME COMPLETO" --sem-pivot-nativo
+.\iniciar.cmd -SemPivotNativo
 ```
 
 Nesse modo, o programa cria um resumo formula-driven e um gráfico comum. É útil
 para ambientes sem Microsoft Excel, mas para o teste recomenda-se a Tabela
 Dinâmica nativa.
 
-## 10.4. Ver detalhes técnicos
+## 10.5. Ver detalhes técnicos
 
 ```powershell
-python -m src.main --nome "SEU NOME COMPLETO" --verbose
+.\iniciar.cmd -Verbose
 ```
 
 ---
@@ -770,6 +816,7 @@ ExcelComprasAutomation/
 ├── pyproject.toml
 ├── README.md
 ├── requirements.txt
+├── iniciar.cmd
 ├── run.ps1
 └── setup.ps1
 ```
@@ -930,16 +977,18 @@ execução é interrompida sem reabrir a saída para criar o fallback.
 Instale as dependências de desenvolvimento:
 
 ```powershell
-python -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
 Execute:
 
 ```powershell
-python -m pytest -q
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na versão 1.5.0: 126 testes aprovados, sem falhas ou erros.
+Resultado esperado no estado atual em desenvolvimento: 137 testes aprovados, sem
+falhas ou erros. A release v1.5.0 permanece registrada no `CHANGELOG.md` com os
+126 testes validados naquela entrega.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -949,19 +998,20 @@ e está protegida pelo `.gitignore`.
 Verifique a qualidade e a formatação:
 
 ```powershell
-python -m ruff check .
-python -m ruff format --check .
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
 ```
 
 Meça a cobertura:
 
 ```powershell
-python -m pytest --cov=src --cov-report=term-missing -q
+.\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na versão 1.5.0, os 126 testes alcançam
-cobertura total de 97,92%, com medição de branches habilitada. O comando falhará
-se uma mudança reduzir a cobertura para menos de 90%.
+O projeto exige cobertura mínima de 90%. No estado atual em desenvolvimento, os
+137 testes alcançam cobertura total de 97,92%, com medição de branches
+habilitada. O comando falhará se uma mudança reduzir a cobertura para menos de
+90%.
 
 ## Integração contínua no GitHub
 
@@ -997,7 +1047,7 @@ Como este é um projeto individual, nenhuma aprovação externa é obrigatória.
 fluxo completo de desenvolvimento, validação e merge está documentado em
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Os 126 testes automatizados verificam:
+Os 137 testes automatizados verificam:
 
 - abas renomeadas;
 - colunas movidas;
@@ -1012,6 +1062,7 @@ Os 126 testes automatizados verificam:
 - criação e substituição segura dos handlers de log;
 - orquestração do motor e comportamento da interface de linha de comando;
 - diagnóstico somente leitura, códigos de saída e consulta de versão;
+- contratos de `setup.ps1`, `run.ps1` e `iniciar.cmd`;
 - escrita, fallback e validação final do arquivo;
 - compatibilidade da fachada após a decomposição interna do escritor;
 - ciclo de vida e limpeza resiliente da integração com o Excel Desktop usando
@@ -1021,26 +1072,26 @@ Os 126 testes automatizados verificam:
 
 # 18. Próximas execuções
 
-Python, VS Code e as bibliotecas são instalados somente uma vez.
+Python e as bibliotecas são instalados somente uma vez. O VS Code continua
+opcional.
 
 Nas próximas vezes:
 
-1. abra a pasta no VS Code;
-2. abra um terminal;
-3. execute:
+1. abra a pasta do projeto;
+2. mantenha uma única planilha válida em `input`;
+3. dê duplo clique em `iniciar.cmd`.
+
+O iniciador reutiliza a `.venv`, solicita o nome e mantém a janela aberta ao
+final quando é aberto sem argumentos.
+
+Se preferir usar o terminal:
 
 ```powershell
-.\run.ps1 -NomeCompleto "SEU NOME COMPLETO"
+.\iniciar.cmd -NomeCompleto "SEU NOME COMPLETO"
 ```
 
-Se preferir ativar manualmente:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m src.main --nome "SEU NOME COMPLETO"
-```
-
-Para sair do ambiente:
+Não é necessário ativar nem desativar a `.venv`. A ativação manual continua
+disponível apenas para desenvolvimento. Se você optou por ativá-la, finalize com:
 
 ```powershell
 deactivate
@@ -1079,10 +1130,13 @@ o PATH.
 Use:
 
 ```powershell
-python -m pip --version
+.\.venv\Scripts\python.exe -m pip --version
 ```
 
-## `Activate.ps1` está bloqueado
+## `Activate.ps1` está bloqueado durante o uso manual
+
+O iniciador não depende da ativação. Se você estiver desenvolvendo e quiser
+ativar a `.venv`, use:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
@@ -1101,8 +1155,8 @@ Volte à pasta que contém `requirements.txt`.
 ## `ModuleNotFoundError`
 
 ```powershell
-python -c "import sys; print(sys.executable)"
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -c "import sys; print(sys.executable)"
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ## `No module named src`
@@ -1110,7 +1164,7 @@ python -m pip install -r requirements.txt
 Execute na raiz:
 
 ```powershell
-python -m src.main
+.\.venv\Scripts\python.exe -m src.main
 ```
 
 ## `PermissionError`
@@ -1120,12 +1174,14 @@ Feche os arquivos de entrada e saída no Excel e execute novamente.
 ## O Excel não liberou todos os recursos
 
 Essa mensagem indica que a automação interrompeu a execução para não acessar
-novamente um arquivo que ainda pode estar bloqueado. Feche o Excel Desktop,
-confirme no Gerenciador de Tarefas que não há um processo `EXCEL.EXE` remanescente
-e tente novamente. Se o problema persistir, execute uma nova tentativa com:
+novamente um arquivo que ainda pode estar bloqueado. Aguarde alguns segundos para
+que o Windows conclua o encerramento assíncrono e feche somente os arquivos ou as
+janelas do Excel envolvidos nesta tentativa. Não encerre indiscriminadamente
+processos `EXCEL.EXE` ou sessões preexistentes no Gerenciador de Tarefas. Depois,
+tente novamente. Se o problema persistir, execute uma nova tentativa com:
 
 ```powershell
-python -m src.main --nome "SEU NOME COMPLETO" --sem-pivot-nativo
+.\iniciar.cmd -SemPivotNativo
 ```
 
 ## A Tabela Dinâmica nativa não foi criada
@@ -1141,13 +1197,13 @@ Confirme:
 Teste:
 
 ```powershell
-python -c "import win32com.client; app=win32com.client.Dispatch('Excel.Application'); print(app.Version); app.Quit()"
+.\.venv\Scripts\python.exe -c "import win32com.client; app=win32com.client.Dispatch('Excel.Application'); print(app.Version); app.Quit()"
 ```
 
 Se a política corporativa bloquear automação COM, use:
 
 ```powershell
-python -m src.main --nome "SEU NOME COMPLETO" --sem-pivot-nativo
+.\iniciar.cmd -SemPivotNativo
 ```
 
 ## O gráfico não aparece no visualizador
@@ -1168,15 +1224,12 @@ Consulte o guia completo:
 
 # 21. Checklist final para a entrevista
 
-- [ ] Python instalado.
-- [ ] `py -3 --version` funciona.
-- [ ] VS Code instalado.
-- [ ] Extensões Python e Pylance instaladas.
-- [ ] Pasta correta aberta.
-- [ ] `.venv` criado.
-- [ ] Interpretador da `.venv` selecionado.
+- [ ] Python 3.11, 3.12, 3.13 ou 3.14 instalado.
+- [ ] Projeto extraído do `.zip`.
+- [ ] `iniciar.cmd` conclui a preparação da `.venv`.
 - [ ] `pip check` sem conflitos.
-- [ ] Planilha na pasta `input`.
+- [ ] Uma única planilha `.xlsx` ou `.xlsm` na pasta `input`, ou `-Arquivo`
+      informado.
 - [ ] Planilha fechada durante a execução.
 - [ ] Nome completo informado.
 - [ ] Resultado aberto no Excel Desktop.
@@ -1187,6 +1240,9 @@ Consulte o guia completo:
 - [ ] Original preservado.
 - [ ] Arquivo final renomeado com o nome completo.
 - [ ] GitHub Actions aprovado no Pull Request.
+
+Para estudar ou modificar o projeto, instale opcionalmente o VS Code, Python e
+Pylance e selecione o interpretador da `.venv`.
 
 ---
 
