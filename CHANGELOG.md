@@ -6,6 +6,13 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- preparar empacotamento e interface para usuários não técnicos.
+
+## 1.6.0 — 2026-07-29
+
 ### Adicionado
 
 - iniciador `iniciar.cmd` para preparar o ambiente quando necessário, executar
@@ -31,11 +38,6 @@ com versionamento semântico.
 - 137 testes aprovados, com cobertura total de 97,92%;
 - contratos de versão do Python, idempotência, diretórios operacionais,
   autodetecção da entrada, switches públicos e códigos de saída aprovados.
-
-### Planejado
-
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- preparar empacotamento e interface para usuários não técnicos.
 
 ## 1.5.0 — 2026-07-29
 

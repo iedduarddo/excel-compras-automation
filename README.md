@@ -986,9 +986,9 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado no estado atual em desenvolvimento: 137 testes aprovados, sem
-falhas ou erros. A release v1.5.0 permanece registrada no `CHANGELOG.md` com os
-126 testes validados naquela entrega.
+Resultado esperado na release v1.6.0: 137 testes aprovados, sem falhas ou erros.
+A release v1.5.0 permanece registrada no `CHANGELOG.md` com os 126 testes
+validados naquela entrega.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
 próprio projeto. Isso evita erros de permissão que algumas instalações do
@@ -1008,10 +1008,9 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. No estado atual em desenvolvimento, os
-137 testes alcançam cobertura total de 97,92%, com medição de branches
-habilitada. O comando falhará se uma mudança reduzir a cobertura para menos de
-90%.
+O projeto exige cobertura mínima de 90%. Na release v1.6.0, os 137 testes
+alcançam cobertura total de 97,92%, com medição de branches habilitada. O comando
+falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
 
