@@ -15,6 +15,8 @@ com versionamento semântico.
   normal, além do estado concluído da decomposição do escritor;
 - documentação da governança e da regressão local atualizada para a versão
   1.6.0.
+- contrato do Engine alinhado ao retorno real da criação nativa, removendo uma
+  segunda tentativa de recálculo que não possuía caminho executável.
 
 ### Planejado
 
