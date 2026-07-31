@@ -10,7 +10,7 @@ import pytest
 from src.core.exceptions import AutomationError
 from src.services import files
 from src.services.logging_setup import configure_logging
-from src.settings import load_aliases, load_json, load_rules
+from src.settings import _resolve_project_root, load_aliases, load_json, load_rules
 
 
 def configure_temporary_directories(
@@ -212,6 +212,32 @@ def test_configuration_helpers_use_config_directory(
 
     assert load_aliases() == aliases
     assert load_rules() == rules
+
+
+def test_project_root_uses_source_tree_outside_frozen_mode(tmp_path: Path) -> None:
+    module_file = tmp_path / "projeto" / "src" / "settings.py"
+
+    result = _resolve_project_root(
+        frozen=False,
+        module_file=module_file,
+    )
+
+    assert result == (tmp_path / "projeto").resolve()
+
+
+def test_project_root_uses_executable_directory_in_frozen_mode(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "Pacote portátil com espaços" / "ExcelComprasAutomation.exe"
+
+    result = _resolve_project_root(
+        frozen=True,
+        executable=executable,
+        module_file=tmp_path / "_internal" / "src" / "settings.py",
+    )
+
+    assert result == executable.resolve().parent
+    assert "_internal" not in result.parts
 
 
 @pytest.mark.parametrize(

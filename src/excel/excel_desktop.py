@@ -57,13 +57,15 @@ _CleanupFailure: TypeAlias = tuple[str, Exception, bool]
 
 
 def pywin32_is_available() -> bool:
-    """Informa se a dependência do Excel Desktop pode ser importada."""
+    """Informa se todo o conjunto pywin32 necessário pode ser importado."""
 
     if platform.system() != "Windows":
         return False
     try:
+        import pythoncom  # noqa: F401
+        import pywintypes  # noqa: F401
         import win32com.client  # noqa: F401
-    except ImportError:
+    except (ImportError, OSError):
         return False
     return True
 

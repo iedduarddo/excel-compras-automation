@@ -12,7 +12,6 @@ from src.excel.detection import WorkbookDetector
 from src.excel.excel_desktop import (
     create_native_pivot_and_recalculate,
     pywin32_is_available,
-    recalculate_only,
 )
 from src.excel.validation import validate_output
 from src.excel.workbook_writer import (
@@ -44,7 +43,7 @@ class AutomationEngine:
         use_native_pivot: bool = True,
         verbose: bool = False,
     ) -> RunResult:
-        """Processa uma cópia, recalcula no Excel e valida a entrega."""
+        """Processa uma cópia, usa o Excel quando disponível e valida a entrega."""
 
         input_file = resolve_input_file(input_value)
         candidate_name = validate_candidate_name(candidate_name)
@@ -113,7 +112,6 @@ class AutomationEngine:
 
         native_pivot_created = False
         desktop_recalculated = False
-        native_attempt_failed = False
         native_available = use_native_pivot and pywin32_is_available()
         if native_available:
             try:
@@ -134,7 +132,6 @@ class AutomationEngine:
                 )
                 raise
             except ExcelDesktopError as error:
-                native_attempt_failed = True
                 logger.warning("%s", error)
                 logger.warning(
                     "Será criado o resumo formula-driven de compatibilidade."
@@ -155,23 +152,6 @@ class AutomationEngine:
             finally:
                 fallback_workbook.close()
             logger.info("Resumo e gráfico de compatibilidade criados.")
-            if native_available and not native_attempt_failed:
-                try:
-                    recalculate_only(paths.output_file, logger)
-                    desktop_recalculated = True
-                except ExcelDesktopCleanupError:
-                    logger.error(
-                        "O Excel Desktop não liberou todos os recursos após "
-                        "o recálculo. A execução será interrompida.",
-                        exc_info=True,
-                    )
-                    raise
-                except Exception:
-                    logger.warning(
-                        "Não foi possível recalcular o resumo pelo Excel Desktop. "
-                        "O Excel recalculará as fórmulas quando o arquivo for aberto.",
-                        exc_info=True,
-                    )
 
         logger.info("Executando validações finais.")
         checks = validate_output(

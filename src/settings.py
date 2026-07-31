@@ -3,12 +3,31 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 from src.core.exceptions import AutomationError
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+def _resolve_project_root(
+    *,
+    frozen: bool | None = None,
+    executable: str | Path | None = None,
+    module_file: str | Path | None = None,
+) -> Path:
+    """Localiza a raiz persistente no código-fonte e no pacote portátil."""
+
+    is_frozen = getattr(sys, "frozen", False) if frozen is None else frozen
+    if is_frozen:
+        executable_path = Path(executable or sys.executable)
+        return executable_path.resolve().parent
+
+    source_path = Path(module_file or __file__)
+    return source_path.resolve().parents[1]
+
+
+PROJECT_ROOT = _resolve_project_root()
 CONFIG_DIR = PROJECT_ROOT / "config"
 INPUT_DIR = PROJECT_ROOT / "input"
 OUTPUT_DIR = PROJECT_ROOT / "output"

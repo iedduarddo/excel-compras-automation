@@ -10,21 +10,46 @@ Isso permite reutilizar os detectores e serviços em projetos futuros.
 ```text
 src.main
    |
-   v
-AutomationEngine
+   +--> --version
+   |       |
+   |       +--> exibe a versão e encerra
    |
-   +--> valida entrada e nome
-   +--> cria backup e log
-   +--> detecta abas e colunas
-   +--> lê políticas
-   +--> calcula e pontua solicitações
-   +--> escreve fórmulas e respostas
-   +--> cria PivotTable/gráfico
-   +--> valida o arquivo
+   +--> --diagnostico / --diagnostic
+   |       |
+   |       v
+   |   run_diagnostics
+   |       |
+   |       +--> verifica ambiente e estrutura da entrada
+   |       +--> não cria backup, saída ou log
    |
-   v
-arquivo em output
+   +--> execução normal
+           |
+           v
+      AutomationEngine
+           |
+           +--> valida entrada e nome
+           +--> cria backup e log
+           +--> detecta abas e colunas
+           +--> lê políticas
+           +--> calcula e pontua solicitações
+           +--> escreve fórmulas e respostas
+           +--> cria PivotTable/gráfico
+           +--> valida o arquivo
+           |
+           v
+      arquivo em output
 ```
+
+Há duas superfícies de execução com o mesmo contrato:
+
+- código-fonte: `iniciar.cmd` → `run.ps1` → `.venv\Scripts\python.exe`;
+- pacote portátil: `iniciar.cmd` → `run.ps1` →
+  `ExcelComprasAutomation.exe`.
+
+Os launchers preferem o executável quando ele está presente. Em modo congelado,
+`src/settings.py` usa a pasta de `sys.executable` como raiz persistente. Assim,
+configuração e artefatos nunca são gravados dentro de `_internal` ou em uma
+pasta temporária do PyInstaller.
 
 ## Responsabilidades
 
@@ -59,9 +84,9 @@ importando dela as operações públicas para abrir a origem, preparar a base,
 criar a aba de apoio, escrever fórmulas e respostas, gerar o fallback, aplicar
 formatação e configurar o recálculo.
 
-A separação interna abaixo está em andamento para a v1.3 e não muda esse
-contrato público. Código externo ao pacote `src.excel` deve depender da fachada,
-e não dos módulos especializados.
+Desde a versão 1.3.0, a implementação interna está decomposta nos módulos abaixo
+sem alterar esse contrato público. Código externo ao pacote `src.excel` deve
+depender da fachada, e não dos módulos especializados.
 
 ### `src/excel/_writer_common.py`
 
@@ -98,7 +123,33 @@ PivotTable.
 
 ### `src/services`
 
-Contém operações reutilizáveis de arquivo, log e texto.
+Contém operações reutilizáveis de arquivos, logging e texto. O módulo
+`diagnostics.py` verifica a versão do Python, as configurações, a entrada, a
+estrutura da planilha e a disponibilidade da integração nativa sem iniciar o
+Excel Desktop nem gerar artefatos operacionais.
+
+### `scripts/build_portable.py`
+
+Orquestra a distribuição Windows x64. Confere versões, chama o PyInstaller,
+monta uma allowlist, valida as DLLs COM, executa smoke tests fora do repositório
+e cria um ZIP acompanhado de SHA-256.
+
+### `packaging/ExcelComprasAutomation.spec`
+
+Define um executável de console em modo `onedir`, com dependências em
+`_internal`, sem UPX e com imports explícitos de `pythoncom`, `pywintypes` e
+`win32com.client`. Os arquivos JSON não são embutidos: permanecem externos para
+serem auditáveis e editáveis.
+
+### Workflows de distribuição
+
+- `package-windows.yml` produz um candidato temporário para cada mudança
+  relevante ao pacote;
+- `release-windows.yml` aceita somente uma tag anotada sobre a `main`, cria os
+  bytes oficiais e abre a GitHub Release em rascunho.
+
+O runner hospedado valida o fallback sem iniciar o Excel. A PivotTable nativa
+continua exigindo regressão local com o Microsoft Excel Desktop.
 
 ## Decisões
 
@@ -111,6 +162,9 @@ Contém operações reutilizáveis de arquivo, log e texto.
 - O fallback mantém o projeto executável fora do Excel Desktop.
 - O Engine depende da fachada `workbook_writer.py`; os módulos `writer_*` ficam
   encapsulados como detalhes da camada de Excel.
+- No pacote congelado, dados graváveis e configuração pertencem à pasta do
+  executável, enquanto o runtime permanece em `_internal`.
+- O ZIP oficial nunca contém planilhas reais, saídas, backups ou logs.
 
 ## Evolução sugerida
 

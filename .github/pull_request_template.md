@@ -46,7 +46,7 @@
 
 ## Checklist final
 
-- [ ] A branch está atualizada com `main`
+- [ ] A branch está atualizada com a branch-base deste Pull Request
 - [ ] O diff contém somente arquivos relacionados ao objetivo
 - [ ] A documentação foi atualizada quando necessário
 - [ ] Todas as conversas do PR foram resolvidas
