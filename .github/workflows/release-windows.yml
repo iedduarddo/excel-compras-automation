@@ -3,10 +3,12 @@ name: Release portátil Windows
 on:
   push:
     tags:
-      - "v*.*.*"
+      - 'v*'
+      
 
 permissions:
-  contents: read
+  contents: write
+
 
 concurrency:
   group: release-windows-${{ github.ref }}
