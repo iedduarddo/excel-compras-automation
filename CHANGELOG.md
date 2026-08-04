@@ -12,6 +12,27 @@ com versionamento semântico.
 - avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
 - estudar uma interface gráfica sem alterar o fluxo de linha de comando.
 
+## 1.8.0 — 2026-08-04
+
+### Adicionado
+
+- modo `--lote` na interface Python e `-Lote` nos scripts Windows para
+  processar todas as planilhas válidas da pasta `input`;
+- resumo final com sucessos, falhas, saídas e motivos por entrada;
+- testes da continuidade após falha esperada e do aborto seguro após
+  falha crítica de limpeza do Excel Desktop.
+
+### Alterado
+
+- nomes das saídas em lote incluem a planilha de origem;
+- saída, backup e log evitam colisões em execuções rápidas.
+
+### Validado
+
+- regressão real com três entradas aprovada no fallback: duas saídas
+  válidas, uma falha estrutural isolada, original preservado e nenhum
+  processo do Excel iniciado.
+
 ## 1.7.0 — 2026-07-29
 
 ### Adicionado

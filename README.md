@@ -680,7 +680,24 @@ Consulte os parâmetros, aliases e exemplos disponíveis:
 .\run.ps1 -h
 ```
 
-## 10.3. Forma direta em Python
+## 10.3. Processar todas as planilhas em lote
+
+O modo de lote processa, em ordem alfabética, todos os arquivos `.xlsx`
+e `.xlsm` válidos da pasta `input`. Arquivos iniciados por `~$`
+são ignorados.
+
+```powershell
+.\iniciar.cmd -Lote -NomeCompleto "Maria Aparecida da Silva"
+.\run.ps1 -Lote -NomeCompleto "Maria Aparecida da Silva" -SemPivotNativo
+```
+
+Cada entrada recebe backup, log e saída próprios. Falhas esperadas são
+registradas no resumo e não interrompem as demais planilhas. O comando
+retorna código `1` quando pelo menos uma entrada falha.
+
+Não combine `-Lote` com `-Arquivo`: o lote sempre usa a pasta `input`.
+
+## 10.4. Forma direta em Python
 
 Não é necessário ativar a `.venv`:
 
@@ -698,7 +715,7 @@ Se `--input` for omitido, o programa usará a única planilha encontrada na past
 `input`. Se houver mais de uma, ele interromperá a execução, informará os nomes
 encontrados e orientará o uso de `--input`.
 
-## 10.4. Executar sem Excel Desktop
+## 10.5. Executar sem Excel Desktop
 
 ```powershell
 .\iniciar.cmd -SemPivotNativo
@@ -708,7 +725,7 @@ Nesse modo, o programa cria um resumo formula-driven e um gráfico comum. É út
 para ambientes sem Microsoft Excel, mas para o teste recomenda-se a Tabela
 Dinâmica nativa.
 
-## 10.5. Ver detalhes técnicos
+## 10.6. Ver detalhes técnicos
 
 ```powershell
 .\iniciar.cmd -Verbose
@@ -1039,8 +1056,8 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.7.0: 162 testes aprovados, sem falhas ou erros.
-A release v1.6.0 permanece registrada no `CHANGELOG.md` com os 137 testes
+Resultado esperado na release v1.8.0: 172 testes aprovados, sem falhas ou erros.
+A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
 Os arquivos temporários dos testes são criados em `.pytest_tmp`, dentro do
@@ -1061,8 +1078,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.7.0, os 162 testes
-alcançam cobertura total de 98,44%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.8.0, os 172 testes
+alcançam cobertura total de 98,47%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
@@ -1086,12 +1103,17 @@ cria uma GitHub Release em rascunho, sem substituir assets existentes.
 
 Os runners hospedados pelo GitHub não incluem o Microsoft Excel Desktop. Por
 isso, a automação COM que cria a Tabela Dinâmica nativa continua sendo validada
-localmente em um computador Windows com Excel instalado. Na versão 1.7.0, as
+localmente em um computador Windows com Excel instalado. Na versão 1.8.0, as
 regressões dos modos nativo e fallback processaram 40 solicitações com 0 erros
 de fórmula. O modo nativo criou uma PivotTable, um gráfico e quatro regras de
 formatação condicional, manteve a aba de suporte oculta e encerrou sem deixar
 processos `EXCEL.EXE`. O CI valida as regras de negócio e os componentes que não
 dependem da interface do Excel.
+
+A regressão específica do lote validou três entradas no fallback, com duas
+saídas válidas e uma falha estrutural isolada. No Excel Desktop, duas entradas
+geraram PivotTables e gráficos nativos, preservaram os originais e encerraram
+o processo do Excel naturalmente.
 
 ## Governança das branches
 

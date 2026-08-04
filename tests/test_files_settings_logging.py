@@ -139,6 +139,34 @@ def test_validate_candidate_name_requires_name_and_surname(value: str) -> None:
         files.validate_candidate_name(value)
 
 
+def test_list_input_files_returns_all_valid_candidates_in_stable_order(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    directories = configure_temporary_directories(monkeypatch, tmp_path)
+    input_dir = directories["INPUT_DIR"]
+    input_dir.mkdir()
+    (input_dir / "B.xlsm").write_bytes(b"b")
+    (input_dir / "a.xlsx").write_bytes(b"a")
+    (input_dir / "~$aberta.xlsx").write_bytes(b"temporario")
+    (input_dir / "notas.txt").write_text("ignorar", encoding="utf-8")
+
+    result = files.list_input_files()
+
+    assert [path.name for path in result] == ["a.xlsx", "B.xlsm"]
+    assert all(path.is_absolute() for path in result)
+
+
+def test_list_input_files_rejects_empty_input_directory(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_temporary_directories(monkeypatch, tmp_path)
+
+    with pytest.raises(AutomationError, match="Nenhuma planilha"):
+        files.list_input_files()
+
+
 def test_validate_candidate_name_normalizes_whitespace() -> None:
     assert files.validate_candidate_name("  Carlos   Eduardo  ") == "Carlos Eduardo"
 
@@ -176,6 +204,34 @@ def test_load_json_reads_valid_configuration(tmp_path: Path) -> None:
     config_file.write_text('{"limite": 10}', encoding="utf-8")
 
     assert load_json(config_file) == {"limite": 10}
+
+
+def test_prepare_run_paths_uses_batch_label_and_avoids_fast_collisions(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    directories = configure_temporary_directories(monkeypatch, tmp_path)
+    files.ensure_project_directories()
+    input_file = directories["INPUT_DIR"] / "Viagens Janeiro.xlsx"
+    input_file.write_bytes(b"planilha")
+
+    first = files.prepare_run_paths(
+        input_file,
+        "Carlos Eduardo",
+        output_label=input_file.stem,
+    )
+    first.output_file.write_bytes(b"resultado")
+    first.log_file.write_text("log", encoding="utf-8")
+    second = files.prepare_run_paths(
+        input_file,
+        "Carlos Eduardo",
+        output_label=input_file.stem,
+    )
+
+    assert "Viagens_Janeiro" in first.output_file.stem
+    assert first.output_file != second.output_file
+    assert first.backup_file != second.backup_file
+    assert first.log_file != second.log_file
 
 
 def test_load_json_translates_missing_and_invalid_json_errors(tmp_path: Path) -> None:

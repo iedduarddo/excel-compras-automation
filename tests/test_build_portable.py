@@ -243,3 +243,19 @@ def test_release_workflow_only_publishes_a_draft_from_annotated_tag() -> None:
     assert "--verify-tag" in workflow
     assert "--generate-notes" in workflow
     assert "--clobber" not in workflow
+
+
+def test_release_workflow_finds_and_validates_draft_by_database_id() -> None:
+    workflow = (
+        PROJECT_ROOT / ".github" / "workflows" / "release-windows.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "id: draft_metadata" in workflow
+    assert "gh release list" in workflow
+    assert "databaseId,tagName,isDraft,isPrerelease" in workflow
+    assert '"release_id=$releaseId" >> $env:GITHUB_OUTPUT' in workflow
+    assert "releases/$releaseId" in workflow
+    assert "releases/tags/$tag" not in workflow
+    assert workflow.count("contents: write") == 1
+    assert workflow.count("contents: read") == 2
+    assert "Ã" not in workflow
