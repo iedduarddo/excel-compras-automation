@@ -128,6 +128,12 @@ Contém operações reutilizáveis de arquivos, logging e texto. O módulo
 estrutura da planilha e a disponibilidade da integração nativa sem iniciar o
 Excel Desktop nem gerar artefatos operacionais.
 
+`exporter.py` é uma superfície programática e opt-in para integração com ERP.
+Ele abre a planilha sem exigir o Excel Desktop, reutiliza o detector de layout,
+calcula novamente políticas e prioridades em Python e produz JSON, CSV e
+checksum SHA-256. O serviço não participa automaticamente do fluxo do
+`AutomationEngine` e não sobrescreve artefatos existentes.
+
 ### `scripts/build_portable.py`
 
 Orquestra a distribuição Windows x64. Confere versões, chama o PyInstaller,
@@ -165,6 +171,8 @@ continua exigindo regressão local com o Microsoft Excel Desktop.
 - No pacote congelado, dados graváveis e configuração pertencem à pasta do
   executável, enquanto o runtime permanece em `_internal`.
 - O ZIP oficial nunca contém planilhas reais, saídas, backups ou logs.
+- A exportação ERP deriva valores pelas regras em Python, e não pelo cache de
+  fórmulas do arquivo, para funcionar igualmente nos modos nativo e fallback.
 
 ## Evolução sugerida
 

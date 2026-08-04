@@ -6,6 +6,26 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- serviço explícito de exportação ERP que reutiliza a detecção, as políticas e
+  a priorização existentes para gerar JSON, CSV e checksum SHA-256 sem depender
+  dos valores em cache das fórmulas do Excel;
+- testes do contrato ERP, da normalização de datas e valores, da integridade do
+  checksum, da ausência de efeitos colaterais no construtor e da proteção contra
+  sobrescrita.
+
+### Alterado
+
+- metadados gerados em diretórios `*.egg-info` passaram a ser ignorados pelo
+  Git.
+
+### Validado
+
+- exportação real de 40 solicitações aprovada sem alterar a planilha original
+  nem criar arquivos nas pastas operacionais do fluxo principal;
+- 167 testes aprovados, com cobertura total de 98,02%.
+
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;

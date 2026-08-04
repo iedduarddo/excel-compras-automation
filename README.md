@@ -833,6 +833,7 @@ ExcelComprasAutomation/
 │   │   └── writer_support.py
 │   ├── services/
 │   │   ├── diagnostics.py
+│   │   ├── exporter.py
 │   │   ├── files.py
 │   │   ├── logging_setup.py
 │   │   └── text.py
@@ -852,6 +853,40 @@ ExcelComprasAutomation/
 
 O `main.py` da raiz é apenas um atalho. A orquestração está em
 `src/core/engine.py`.
+
+## Exportação ERP programática
+
+`src/services/exporter.py` oferece uma integração explícita para consumidores
+que precisam transformar a base de viagens em JSON e CSV. O serviço reutiliza
+os aliases, as políticas e o motor de prioridades do projeto, portanto não
+depende do cache de fórmulas do Excel nem exige `pandas`.
+
+```python
+from src.services.exporter import ERPExporter
+
+result = ERPExporter(
+    "input/viagens.xlsx",
+    "output/erp",
+).process_and_export()
+
+print(result.json_file)
+print(result.csv_file)
+print(result.checksum_file)
+```
+
+O diretório de destino não é criado no construtor. Ele só é criado depois que a
+planilha é validada e os registros são normalizados. Para evitar perda de dados,
+o serviço não sobrescreve artefatos existentes.
+
+Os três artefatos usam o mesmo nome-base:
+
+- `erp_carga_compras.json`: carga estruturada em UTF-8;
+- `erp_carga_compras.csv`: carga tabular em UTF-8 com BOM e separador `;`;
+- `erp_carga_compras.json.sha256`: integridade do arquivo JSON.
+
+Essa API não é executada automaticamente pelo `AutomationEngine`, pelo
+`run.ps1` nem pelo pacote portátil. O consumidor deve chamá-la de forma
+intencional e escolher uma pasta de destino vazia.
 
 ## Distribuição portátil
 
