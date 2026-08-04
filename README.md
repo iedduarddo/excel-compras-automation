@@ -680,7 +680,24 @@ Consulte os parâmetros, aliases e exemplos disponíveis:
 .\run.ps1 -h
 ```
 
-## 10.3. Forma direta em Python
+## 10.3. Processar todas as planilhas em lote
+
+O modo de lote processa, em ordem alfabética, todos os arquivos `.xlsx`
+e `.xlsm` válidos da pasta `input`. Arquivos iniciados por `~$`
+são ignorados.
+
+```powershell
+.\iniciar.cmd -Lote -NomeCompleto "Maria Aparecida da Silva"
+.\run.ps1 -Lote -NomeCompleto "Maria Aparecida da Silva" -SemPivotNativo
+```
+
+Cada entrada recebe backup, log e saída próprios. Falhas esperadas são
+registradas no resumo e não interrompem as demais planilhas. O comando
+retorna código `1` quando pelo menos uma entrada falha.
+
+Não combine `-Lote` com `-Arquivo`: o lote sempre usa a pasta `input`.
+
+## 10.4. Forma direta em Python
 
 Não é necessário ativar a `.venv`:
 
@@ -698,7 +715,7 @@ Se `--input` for omitido, o programa usará a única planilha encontrada na past
 `input`. Se houver mais de uma, ele interromperá a execução, informará os nomes
 encontrados e orientará o uso de `--input`.
 
-## 10.4. Executar sem Excel Desktop
+## 10.5. Executar sem Excel Desktop
 
 ```powershell
 .\iniciar.cmd -SemPivotNativo
@@ -708,7 +725,7 @@ Nesse modo, o programa cria um resumo formula-driven e um gráfico comum. É út
 para ambientes sem Microsoft Excel, mas para o teste recomenda-se a Tabela
 Dinâmica nativa.
 
-## 10.5. Ver detalhes técnicos
+## 10.6. Ver detalhes técnicos
 
 ```powershell
 .\iniciar.cmd -Verbose

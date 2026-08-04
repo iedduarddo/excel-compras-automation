@@ -42,12 +42,17 @@ class AutomationEngine:
         candidate_name: str,
         use_native_pivot: bool = True,
         verbose: bool = False,
+        output_label: str | None = None,
     ) -> RunResult:
         """Processa uma cópia, usa o Excel quando disponível e valida a entrega."""
 
         input_file = resolve_input_file(input_value)
         candidate_name = validate_candidate_name(candidate_name)
-        paths = prepare_run_paths(input_file, candidate_name)
+        paths = prepare_run_paths(
+            input_file,
+            candidate_name,
+            output_label=output_label,
+        )
         logger = configure_logging(paths.log_file, verbose=verbose)
         logger.info("Iniciando Excel Compras Automation.")
         logger.info("Entrada: %s", paths.input_file)

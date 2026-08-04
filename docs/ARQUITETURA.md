@@ -58,6 +58,19 @@ pasta temporária do PyInstaller.
 Interpreta os argumentos do terminal e apresenta o resultado. Não conhece
 detalhes de Excel.
 
+### `src/core/batch.py`
+
+Coordena o processamento sequencial das planilhas válidas da pasta
+`input`. O nome do candidato é validado uma vez e cada entrada reutiliza
+o `AutomationEngine`, com backup, log e saída independentes.
+
+Falhas esperadas são registradas no resumo sem interromper as próximas
+entradas. Falhas críticas de limpeza do Excel Desktop são propagadas
+imediatamente para evitar acesso a arquivos potencialmente bloqueados.
+
+O serviço de arquivos ignora temporários iniciados por `~$` e impede
+colisões entre saídas, backups e logs de execuções rápidas.
+
 ### `src/core/engine.py`
 
 Coordena a sequência. Ele não implementa diretamente fórmulas, detecção ou

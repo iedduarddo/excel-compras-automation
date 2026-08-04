@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from src import __version__
+from src.core.batch import BatchAutomation, BatchResult
 from src.core.engine import AutomationEngine
 from src.core.exceptions import AutomationError
 from src.services.diagnostics import format_diagnostic_report, run_diagnostics
@@ -16,7 +17,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=("Preenche e analisa a planilha do teste de Analista de Compras.")
     )
-    parser.add_argument(
+    input_mode = parser.add_mutually_exclusive_group()
+    input_mode.add_argument(
         "--input",
         type=Path,
         default=None,
@@ -24,6 +26,13 @@ def build_parser() -> argparse.ArgumentParser:
             "Caminho da planilha. Se omitido, será usada a única planilha "
             "existente na pasta input."
         ),
+    )
+    input_mode.add_argument(
+        "--lote",
+        "--batch",
+        dest="batch",
+        action="store_true",
+        help="Processa todas as planilhas válidas da pasta input.",
     )
     parser.add_argument(
         "--candidate-name",
@@ -63,7 +72,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.batch and args.diagnostic:
+        parser.error("Use apenas um modo por vez: --lote ou --diagnostico.")
 
     try:
         if args.diagnostic:
@@ -74,6 +86,15 @@ def main(argv: list[str] | None = None) -> int:
         candidate_name = args.candidate_name
         if not candidate_name:
             candidate_name = input("Digite seu nome completo: ").strip()
+
+        if args.batch:
+            batch_result = BatchAutomation().run(
+                candidate_name=candidate_name,
+                use_native_pivot=not args.sem_pivot_nativo,
+                verbose=args.verbose,
+            )
+            _print_batch_result(batch_result)
+            return 1 if batch_result.failed else 0
 
         result = AutomationEngine().run(
             input_value=args.input,
@@ -109,6 +130,26 @@ def main(argv: list[str] | None = None) -> int:
     )
     print("=" * 72)
     return 0
+
+
+def _print_batch_result(batch_result: BatchResult) -> None:
+    """Exibe um resumo único, mantendo os detalhes de cada entrada."""
+
+    print("\n" + "=" * 72)
+    print("PROCESSAMENTO EM LOTE CONCLUÍDO")
+    print("=" * 72)
+    print(f"Planilhas     : {len(batch_result.items)}")
+    print(f"Sucessos      : {batch_result.succeeded}")
+    print(f"Falhas        : {batch_result.failed}")
+    print("-" * 72)
+    for item in batch_result.items:
+        if item.result is not None:
+            print(f"[OK] {item.input_file.name}")
+            print(f"     Saída: {item.result.output_file}")
+        else:
+            print(f"[FALHA] {item.input_file.name}")
+            print(f"        Motivo: {item.error}")
+    print("=" * 72)
 
 
 if __name__ == "__main__":
