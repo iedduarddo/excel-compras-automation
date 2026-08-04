@@ -188,27 +188,27 @@ jobs:
 
           function Get-ReleaseSummary {
               $releaseListJson = (
-                  gh release list `
-                      --repo $env:GITHUB_REPOSITORY `
-                      --limit 1000 `
-                      --json databaseId,tagName,isDraft,isPrerelease
+                  gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100"
               ) -join "`n"
               if ($LASTEXITCODE -ne 0) {
-                  throw "Não foi possível consultar as Releases existentes."
+                  throw "Nao foi possivel consultar as Releases existentes."
               }
 
               $converted = $releaseListJson | ConvertFrom-Json
-              $releases = @(
-                  foreach ($candidate in $converted) {
-                      $candidate
+              $matches = @(
+                  foreach ($candidate in @($converted)) {
+                      if ($candidate.tag_name -eq $tag) {
+                          [pscustomobject]@{
+                              releaseId = [long]$candidate.id
+                              tagName = [string]$candidate.tag_name
+                              isDraft = [bool]$candidate.draft
+                              isPrerelease = [bool]$candidate.prerelease
+                          }
+                      }
                   }
               )
-              $matches = @(
-                  $releases |
-                      Where-Object { $_.tagName -eq $tag }
-              )
               if ($matches.Count -gt 1) {
-                  throw "Há mais de uma Release associada à tag $tag."
+                  throw "Ha mais de uma Release associada a tag $tag."
               }
               if ($matches.Count -eq 1) {
                   return $matches[0]
@@ -234,12 +234,21 @@ jobs:
               }
           }
 
-          $releaseSummary = Get-ReleaseSummary
+          $releaseSummary = $null
+          for ($attempt = 1; $attempt -le 12; $attempt++) {
+              $releaseSummary = Get-ReleaseSummary
+              if ($null -ne $releaseSummary) {
+                  break
+              }
+              if ($attempt -lt 12) {
+                  Start-Sleep -Seconds 2
+              }
+          }
           if ($null -eq $releaseSummary -or -not $releaseSummary.isDraft) {
               throw "A Release em rascunho não foi encontrada após a criação."
           }
 
-          $releaseId = [string]$releaseSummary.databaseId
+          $releaseId = [string]$releaseSummary.releaseId
           $releaseJson = (
               gh api "repos/$env:GITHUB_REPOSITORY/releases/$releaseId"
           ) -join "`n"

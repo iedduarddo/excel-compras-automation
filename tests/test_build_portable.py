@@ -245,14 +245,19 @@ def test_release_workflow_only_publishes_a_draft_from_annotated_tag() -> None:
     assert "--clobber" not in workflow
 
 
-def test_release_workflow_finds_and_validates_draft_by_database_id() -> None:
+def test_release_workflow_finds_and_validates_draft_by_rest_id() -> None:
     workflow = (
         PROJECT_ROOT / ".github" / "workflows" / "release-windows.yml"
     ).read_text(encoding="utf-8")
 
     assert "id: draft_metadata" in workflow
-    assert "gh release list" in workflow
-    assert "databaseId,tagName,isDraft,isPrerelease" in workflow
+    assert 'gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100"' in workflow
+    assert "gh release list" not in workflow
+    assert "databaseId" not in workflow
+    assert "releaseId = [long]$candidate.id" in workflow
+    assert "$releaseSummary.releaseId" in workflow
+    assert "for ($attempt = 1; $attempt -le 12; $attempt++)" in workflow
+    assert "Start-Sleep -Seconds 2" in workflow
     assert '"release_id=$releaseId" >> $env:GITHUB_OUTPUT' in workflow
     assert "releases/$releaseId" in workflow
     assert "releases/tags/$tag" not in workflow
