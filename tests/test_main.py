@@ -9,6 +9,7 @@ import pytest
 
 import src.main as main_module
 from src import __version__
+from src.core.batch import BatchItemResult, BatchResult
 from src.core.exceptions import AutomationError
 from src.core.models import RunResult
 from src.services.diagnostics import (
@@ -48,6 +49,17 @@ def test_build_parser_maps_all_command_line_options() -> None:
     assert args.sem_pivot_nativo is True
     assert args.verbose is True
     assert args.diagnostic is True
+
+    batch_args = main_module.build_parser().parse_args(["--lote"])
+    assert batch_args.batch is True
+    assert batch_args.input is None
+
+
+def test_parser_rejects_batch_with_explicit_input() -> None:
+    with pytest.raises(SystemExit) as error:
+        main_module.build_parser().parse_args(["--lote", "--input", "entrada.xlsx"])
+
+    assert error.value.code == 2
 
 
 def test_main_runs_engine_and_prints_native_result(
@@ -109,6 +121,47 @@ def test_main_prompts_for_name_and_reports_fallback(
     assert received["candidate_name"] == "Carlos Eduardo"
     assert received["use_native_pivot"] is False
     assert "resumo compatível com fórmulas" in output
+
+
+def test_main_runs_batch_and_returns_one_when_one_input_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    successful_input = tmp_path / "ok.xlsx"
+    failed_input = tmp_path / "falha.xlsx"
+    batch_result = BatchResult(
+        (
+            BatchItemResult(successful_input, result=make_result(tmp_path)),
+            BatchItemResult(failed_input, error="estrutura inválida"),
+        )
+    )
+    received: dict[str, object] = {}
+
+    class FakeBatch:
+        def run(self, **kwargs: object) -> BatchResult:
+            received.update(kwargs)
+            return batch_result
+
+    monkeypatch.setattr(main_module, "BatchAutomation", FakeBatch)
+
+    exit_code = main_module.main(
+        ["--lote", "--nome", "Carlos Eduardo", "--sem-pivot-nativo"]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 1
+    assert received == {
+        "candidate_name": "Carlos Eduardo",
+        "use_native_pivot": False,
+        "verbose": False,
+    }
+    assert "PROCESSAMENTO EM LOTE CONCLUÍDO" in output
+    assert "Sucessos      : 1" in output
+    assert "Falhas        : 1" in output
+    assert "[OK] ok.xlsx" in output
+    assert "[FALHA] falha.xlsx" in output
+    assert "estrutura inválida" in output
 
 
 def test_main_translates_expected_error_to_exit_code(
@@ -232,3 +285,6 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert "if ($Diagnostico)" in script
     assert '$NomeCompleto = Read-Host "Digite seu nome completo"' in script
     assert "exit $ExitCode" in script
+    assert "[switch]$Lote" in script
+    assert '$ApplicationArguments += "--lote"' in script
+    assert "Nao combine -Lote com -Arquivo" in script

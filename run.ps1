@@ -1,6 +1,7 @@
 param(
     [string]$NomeCompleto = "",
     [string]$Arquivo = "",
+    [switch]$Lote,
     [Alias("Diagnostic")]
     [switch]$Diagnostico,
     [switch]$Version,
@@ -18,6 +19,7 @@ Excel Compras Automation
 
 Uso:
   .\run.ps1 -NomeCompleto "NOME SOBRENOME" [-Arquivo "entrada.xlsx"]
+  .\run.ps1 -Lote -NomeCompleto "NOME SOBRENOME"
   .\run.ps1 -Diagnostico [-Arquivo "entrada.xlsx"]
   .\run.ps1 -Version
   .\run.ps1 -Help
@@ -27,6 +29,7 @@ Opcoes:
                       solicitado se nao for informado.
   -Arquivo            Caminho opcional da planilha. Quando omitido, a aplicacao
                       usa a unica planilha existente na pasta input.
+  -Lote               Processa todas as planilhas validas da pasta input.
   -Diagnostico        Verifica o ambiente sem executar a automacao.
   -Diagnostic         Alias de -Diagnostico.
   -Version            Mostra a versao da aplicacao.
@@ -71,6 +74,14 @@ if ($Diagnostico -and $Version) {
     throw "Use apenas um modo por vez: -Diagnostico ou -Version."
 }
 
+if ($Lote -and ($Diagnostico -or $Version)) {
+    throw "Use apenas um modo por vez: -Lote, -Diagnostico ou -Version."
+}
+
+if ($Lote -and -not [string]::IsNullOrWhiteSpace($Arquivo)) {
+    throw "Nao combine -Lote com -Arquivo. O lote usa a pasta input."
+}
+
 $ApplicationArguments = @()
 
 if (-not $UsePortableExecutable) {
@@ -89,6 +100,10 @@ else {
         $ApplicationArguments += "--diagnostico"
     }
     else {
+        if ($Lote) {
+            $ApplicationArguments += "--lote"
+        }
+
         if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
             $NomeCompleto = Read-Host "Digite seu nome completo"
         }
