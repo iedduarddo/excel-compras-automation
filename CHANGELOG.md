@@ -6,6 +6,14 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.8.0 — 2026-08-04
+
 ### Adicionado
 
 - modo `--lote` na interface Python e `-Lote` nos scripts Windows para
@@ -24,12 +32,6 @@ com versionamento semântico.
 - regressão real com três entradas aprovada no fallback: duas saídas
   válidas, uma falha estrutural isolada, original preservado e nenhum
   processo do Excel iniciado.
-
-### Planejado
-
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
-- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
 
 ## 1.7.0 — 2026-07-29
 
