@@ -6,6 +6,14 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.9.0 - 2026-08-04
+
 ### Adicionado
 
 - perfis JSON de adaptador para acrescentar nomes específicos de abas,
@@ -20,11 +28,13 @@ com versionamento semântico.
 - encaminhamento seguro de formatos desconhecidos para revisão, sem modificar
   o arquivo original.
 
-### Planejado
+### Validado
 
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
-- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+- 202 testes aprovados no Windows, com cobertura total de 93,18%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado;
+- regressao real aprovada com reconhecimento automatico, diagnostico e
+  processamento por comando escrito, preservando a planilha original.
 
 ## 1.8.0 — 2026-08-04
 
