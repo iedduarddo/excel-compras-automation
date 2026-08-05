@@ -6,6 +6,11 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Corrigido
+
+- consumo atomico dos comandos pendentes para impedir que dois monitores
+  processem ou movam o mesmo arquivo simultaneamente.
+
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
