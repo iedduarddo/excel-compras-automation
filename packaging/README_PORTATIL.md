@@ -68,6 +68,16 @@ Copie as planilhas para `assistente_planilhas\entrada`. Consulte
 `docs\ASSISTENTE.md` para configurar o nome, usar a fila e entender quando um
 arquivo é enviado para revisão.
 
+Para estruturas genéricas, crie uma prévia e confirme somente depois de
+revisá-la:
+
+```powershell
+.\iniciar.cmd -Assistente `
+    -Comando 'limpar e resumir arquivo="clientes.xlsx"'
+.\iniciar.cmd -Assistente `
+    -Comando 'confirmar plano="IDENTIFICADOR"'
+```
+
 O modo `-Voz` abre uma janela e aciona a Digitação por Voz do Windows (`Win+H`).
 Revise o texto e confirme antes da execução. A automação não exige chave de API,
 e a transcrição continua limitada aos mesmos comandos seguros da escrita.

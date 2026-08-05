@@ -1,12 +1,12 @@
 # Adaptadores de planilhas
 
-Um adaptador acrescenta nomes externos ao vocabulário já conhecido pela
-automação. Ele não substitui as configurações padrão e não altera fórmulas,
-regras de negócio ou arquivos originais.
+Existem dois tipos de adaptador, com responsabilidades diferentes.
 
-## Formato
+## Adaptador do fluxo de Compras
 
-Crie um JSON como o exemplo abaixo:
+Esse perfil acrescenta nomes externos ao vocabulário de abas, colunas e
+indicadores já conhecido pela automação de Compras. Ele não substitui a
+configuração padrão.
 
 ```json
 {
@@ -19,8 +19,7 @@ Crie um JSON como o exemplo abaixo:
     },
     "base_columns": {
       "request_id": ["Número do Pedido"],
-      "request_date": ["Data de Abertura"],
-      "travel_date": ["Data de Utilização"]
+      "request_date": ["Data de Abertura"]
     },
     "policy_columns": {
       "limit_value": ["Teto Autorizado"]
@@ -33,10 +32,10 @@ Crie um JSON como o exemplo abaixo:
 ```
 
 Os grupos aceitos são `sheets`, `base_columns`, `policy_columns`,
-`response_columns` e `indicator_labels`. Cada chave interna precisa existir no
-`config/aliases.json`; isso impede erros silenciosos de digitação.
+`response_columns` e `indicator_labels`. Cada chave interna precisa existir em
+`config/aliases.json`.
 
-## Validar antes de processar
+Valide antes de processar:
 
 ```powershell
 .\iniciar.cmd `
@@ -45,15 +44,21 @@ Os grupos aceitos são `sheets`, `base_columns`, `policy_columns`,
     -Adaptador "C:\Mapeamentos\agencia-exemplo.json"
 ```
 
-## Executar
+## Adaptador universal gerado
+
+Para uma estrutura ainda desconhecida, coloque o arquivo em
+`assistente_planilhas\entrada` e peça:
 
 ```powershell
-.\iniciar.cmd `
-    -NomeCompleto "NOME SOBRENOME" `
-    -Arquivo "C:\Planilhas\entrada.xlsx" `
-    -Adaptador "C:\Mapeamentos\agencia-exemplo.json"
+.\run.ps1 -Assistente `
+    -Comando 'gerar adaptador arquivo="origem-nova.xlsx"'
 ```
 
-O mesmo adaptador pode ser usado com `-Lote`. Nesta primeira versão, o perfil
-adapta nomes de abas, colunas e indicadores. Transformações de valores ou a
-criação de áreas ausentes devem ser implementadas em uma etapa específica.
+O assistente cria primeiro uma prévia. Somente depois de `confirmar plano` o
+JSON é gravado em `assistente_planilhas\adaptadores\universais`.
+
+Esse perfil registra a linha de cabeçalho, o nome original, a posição e o tipo
+observado de cada coluna. Ele serve para auditar e reaproveitar o mapeamento em
+ações universais; não é carregado como alias do fluxo específico de Compras.
+
+Nenhum dos dois formatos altera o arquivo original.

@@ -55,6 +55,14 @@ class AssistantWorkspace:
         return self.root / "adaptadores"
 
     @property
+    def universal_adapters_dir(self) -> Path:
+        return self.adapters_dir / "universais"
+
+    @property
+    def plans_dir(self) -> Path:
+        return self.review_dir / "planos"
+
+    @property
     def commands_dir(self) -> Path:
         return self.root / "comandos"
 
@@ -84,6 +92,8 @@ class AssistantWorkspace:
             self.logs_dir,
             self.review_dir,
             self.adapters_dir,
+            self.universal_adapters_dir,
+            self.plans_dir,
             self.pending_commands_dir,
             self.completed_commands_dir,
             self.failed_commands_dir,

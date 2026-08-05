@@ -6,6 +6,24 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- reconhecimento genérico de tabelas, cabeçalhos, tipos, vazios e duplicidades
+  em planilhas que ainda não possuem mapeamento específico;
+- pedidos universais por voz ou escrita para limpar, organizar, calcular,
+  resumir, criar relatório e gerar adaptador;
+- plano persistente com prévia legível, SHA-256 da origem e confirmação
+  obrigatória antes de criar qualquer arquivo transformado;
+- adaptadores universais gerados com abas, cabeçalhos, posições e tipos, sem
+  misturá-los aos aliases do fluxo específico de Compras.
+
+### Segurança
+
+- originais nunca são sobrescritos e toda transformação gera nova saída e
+  backup;
+- planos são invalidados quando a origem muda após a prévia;
+- pedidos para apagar, sobrescrever ou enviar dados continuam recusados.
+
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
