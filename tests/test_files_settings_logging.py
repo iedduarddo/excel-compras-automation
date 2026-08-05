@@ -234,6 +234,27 @@ def test_prepare_run_paths_uses_batch_label_and_avoids_fast_collisions(
     assert first.log_file != second.log_file
 
 
+def test_prepare_run_paths_accepts_isolated_artifact_directories(tmp_path) -> None:
+    input_file = tmp_path / "entrada.xlsx"
+    input_file.write_bytes(b"planilha")
+    output_dir = tmp_path / "assistente" / "saida"
+    backup_dir = tmp_path / "assistente" / "backup"
+    log_dir = tmp_path / "assistente" / "logs"
+
+    result = files.prepare_run_paths(
+        input_file,
+        "Maria Aparecida",
+        output_dir=output_dir,
+        backup_dir=backup_dir,
+        log_dir=log_dir,
+    )
+
+    assert result.output_file.parent == output_dir
+    assert result.backup_file.parent == backup_dir
+    assert result.log_file.parent == log_dir
+    assert result.backup_file.read_bytes() == b"planilha"
+
+
 def test_load_json_translates_missing_and_invalid_json_errors(tmp_path: Path) -> None:
     missing_file = tmp_path / "ausente.json"
     with pytest.raises(AutomationError, match="não encontrado"):

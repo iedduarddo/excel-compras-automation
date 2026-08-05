@@ -111,3 +111,28 @@ def test_batch_validates_candidate_before_listing_inputs(
 
     with pytest.raises(AutomationError, match="nome completo"):
         batch_module.BatchAutomation().run(candidate_name="Carlos")
+
+
+def test_batch_forwards_adapter_to_every_input(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    inputs = (tmp_path / "a.xlsx", tmp_path / "b.xlsx")
+    calls: list[dict[str, object]] = []
+
+    class FakeEngine:
+        def run(self, **kwargs: object) -> RunResult:
+            calls.append(kwargs)
+            return make_result(kwargs["input_value"])  # type: ignore[arg-type]
+
+    monkeypatch.setattr(batch_module, "list_input_files", lambda: inputs)
+
+    batch_module.BatchAutomation(FakeEngine()).run(
+        candidate_name="Carlos Eduardo",
+        adapter=Path("config/cliente.json"),
+    )
+
+    assert [call["adapter"] for call in calls] == [
+        Path("config/cliente.json"),
+        Path("config/cliente.json"),
+    ]

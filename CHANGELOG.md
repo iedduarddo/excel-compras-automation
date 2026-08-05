@@ -6,6 +6,20 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- perfis JSON de adaptador para acrescentar nomes específicos de abas,
+  colunas e indicadores sem alterar o mapeamento padrão;
+- opção `--adaptador` na interface Python e `-Adaptador` nos iniciadores
+  Windows, disponível também no diagnóstico e no processamento em lote;
+- validação estrita dos grupos e campos canônicos declarados pelo adaptador.
+- pasta `assistente_planilhas` com entrada, saída, backup, revisão, adaptadores,
+  logs e fila persistente de comandos;
+- comandos escritos para reconhecer, diagnosticar e processar uma ou várias
+  planilhas, com modo de monitoramento local;
+- encaminhamento seguro de formatos desconhecidos para revisão, sem modificar
+  o arquivo original.
+
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
