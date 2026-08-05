@@ -6,12 +6,28 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
-
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
 - estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.10.0 - 2026-08-05
+
+### Adicionado
+
+- entrada `-Voz` do assistente usando a Digitacao por Voz do Windows, com
+  revisao humana e limitada aos mesmos comandos seguros da escrita;
+- janela para falar, revisar a transcricao e confirmar antes da execucao;
+- testes da transcricao confirmada, erros da interface do Windows e
+  integracao com a linha de comando.
+
+### Validado
+
+- regressao real em pt-BR confirmou o comando `ajuda` antes da execucao;
+- 217 testes aprovados no Windows, com cobertura total de 93,34%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado.
 
 ## 1.9.1 - 2026-08-05
 

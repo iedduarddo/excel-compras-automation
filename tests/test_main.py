@@ -9,6 +9,7 @@ import pytest
 
 import src.main as main_module
 from src import __version__
+from src.assistant.voice import VoiceRecognition
 from src.core.batch import BatchItemResult, BatchResult
 from src.core.exceptions import AutomationError
 from src.core.models import RunResult
@@ -64,6 +65,10 @@ def test_build_parser_maps_all_command_line_options() -> None:
     assert assistant_args.command == ["ajuda"]
     assert assistant_args.assistant_root == Path("central")
 
+    voice_args = main_module.build_parser().parse_args(["--assistente", "--voz"])
+    assert voice_args.assistant is True
+    assert voice_args.voice is True
+
 
 def test_parser_rejects_batch_with_explicit_input() -> None:
     with pytest.raises(SystemExit) as error:
@@ -109,6 +114,41 @@ def test_main_executes_assistant_help_command(
 
     assert exit_code == 0
     assert "Comandos disponíveis" in capsys.readouterr().out
+
+
+def test_main_transcribes_and_executes_voice_command(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        main_module,
+        "recognize_voice",
+        lambda: VoiceRecognition("ajuda", 0.93, "pt-BR"),
+    )
+
+    exit_code = main_module.main(
+        [
+            "--assistente",
+            "--voz",
+            "--pasta-assistente",
+            str(tmp_path / "central"),
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "Escutando um comando" in output
+    assert 'Comando confirmado por voz: "ajuda"' in output
+    assert "confiança 93%" in output
+    assert "Comandos disponíveis" in output
+
+
+def test_main_rejects_voice_without_assistant() -> None:
+    with pytest.raises(SystemExit) as error:
+        main_module.main(["--voz"])
+
+    assert error.value.code == 2
 
 
 def test_main_runs_engine_and_prints_native_result(
@@ -339,8 +379,10 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert "exit $ExitCode" in script
     assert "[switch]$Lote" in script
     assert "[string]$Adaptador" in script
+    assert "[switch]$Voz" in script
     assert '@("--adaptador", $Adaptador)' in script
     assert "$QuantidadeAcoesAssistente = 0" in script
     assert "$AcoesAssistente.Count" not in script
     assert '$ApplicationArguments += "--lote"' in script
+    assert '$ApplicationArguments += "--voz"' in script
     assert "Nao combine -Lote com -Arquivo" in script

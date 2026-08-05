@@ -759,6 +759,7 @@ Prepare o assistente local e envie um comando escrito:
 .\run.ps1 -Assistente -PrepararPastas
 .\run.ps1 -Assistente -Comando 'reconhecer todas'
 .\run.ps1 -Assistente -Comando 'diagnosticar todas'
+.\run.ps1 -Assistente -Voz
 .\run.ps1 -Assistente `
     -Comando 'processar todas nome="SEU NOME COMPLETO" sem excel'
 ```
@@ -766,7 +767,7 @@ Prepare o assistente local e envie um comando escrito:
 As planilhas ficam em `assistente_planilhas\entrada`. Formatos desconhecidos
 geram um relatório em `assistente_planilhas\revisao` em vez de serem alterados.
 Consulte [docs/ASSISTENTE.md](docs/ASSISTENTE.md) para conhecer a fila de
-comandos e o modo `-Monitorar`.
+comandos, a entrada por voz e o modo `-Monitorar`.
 
 ---
 
@@ -1093,7 +1094,7 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.9.1: 203 testes aprovados, sem falhas ou erros.
+Resultado esperado na release v1.10.0: 217 testes aprovados, sem falhas ou erros.
 A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
@@ -1115,8 +1116,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.9.1, os 203 testes
-alcançam cobertura total de 93,13%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.10.0, os 217 testes
+alcançam cobertura total de 93,34%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub

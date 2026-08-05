@@ -58,6 +58,25 @@ com o resultado. Para manter a pasta sob observação:
 
 Interrompa o monitor com `Ctrl+C`.
 
+## Comando por voz no Windows
+
+O modo de voz abre uma janela de confirmação e aciona a Digitação por Voz do
+Windows (`Win+H`):
+
+```powershell
+.\run.ps1 -Assistente -Voz
+```
+
+Fale um dos mesmos comandos aceitos por escrito, por exemplo `ajuda`,
+`reconhecer todas`, `diagnosticar todas` ou `processar todas`. Revise o texto na
+janela e clique em `Usar comando`; somente o texto confirmado é entregue ao
+interpretador seguro.
+
+O recurso requer microfone autorizado, Windows com Digitação por Voz e o teclado
+`Português (Brasil)` instalado. O tratamento do áudio pertence ao Windows e
+segue as configurações de privacidade do sistema; a automação não exige chave de
+API. A voz é opcional: a fila `.txt` e `-Comando` continuam disponíveis.
+
 ## Reconhecimento e revisão
 
 O assistente tenta primeiro o mapeamento padrão e depois os perfis `.json` da
@@ -72,5 +91,5 @@ mesmo formato poderão ser reconhecidas automaticamente.
 
 Os comandos disponíveis são `ajuda`, `reconhecer`, `diagnosticar` e
 `processar`. Pedidos livres como apagar dados, enviar e-mail ou inventar
-fórmulas são recusados. A entrada por voz será acrescentada como transcrição
-para essa mesma fila, preservando as validações e os backups.
+fórmulas são recusados, tanto por voz quanto por escrita. A voz apenas transcreve
+para o mesmo interpretador seguro; ela não amplia as operações permitidas.
