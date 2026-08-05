@@ -6,16 +6,26 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
-### Corrigido
-
-- consumo atomico dos comandos pendentes para impedir que dois monitores
-  processem ou movam o mesmo arquivo simultaneamente.
 
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;
 - avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
 - estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.9.1 - 2026-08-05
+
+### Corrigido
+
+- consumo atomico dos comandos pendentes para impedir que dois monitores
+  processem ou movam o mesmo arquivo simultaneamente.
+
+### Validado
+
+- teste concorrente deterministico confirmou um unico processamento;
+- 203 testes aprovados no Windows, com cobertura total de 93,13%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado.
 
 ## 1.9.0 - 2026-08-04
 

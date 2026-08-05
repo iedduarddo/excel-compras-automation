@@ -1093,7 +1093,7 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.9.0: 202 testes aprovados, sem falhas ou erros.
+Resultado esperado na release v1.9.1: 203 testes aprovados, sem falhas ou erros.
 A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
@@ -1115,8 +1115,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.9.0, os 202 testes
-alcançam cobertura total de 93,18%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.9.1, os 203 testes
+alcançam cobertura total de 93,13%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
