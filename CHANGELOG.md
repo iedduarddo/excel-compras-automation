@@ -6,6 +6,13 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Adicionado
+
+- entrada `-Voz` do assistente usando a Digitacao por Voz do Windows, com revisao
+  humana e limitada aos mesmos comandos seguros da escrita;
+- testes da transcricao confirmada, erros da interface do Windows e integracao
+  com a linha de comando.
+
 
 ### Planejado
 

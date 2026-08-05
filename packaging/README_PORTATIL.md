@@ -60,12 +60,17 @@ O pacote também pode criar uma central isolada para entradas e comandos:
 ```powershell
 .\iniciar.cmd -Assistente -PrepararPastas
 .\iniciar.cmd -Assistente -Comando 'diagnosticar todas'
+.\iniciar.cmd -Assistente -Voz
 .\iniciar.cmd -Assistente -Monitorar
 ```
 
 Copie as planilhas para `assistente_planilhas\entrada`. Consulte
 `docs\ASSISTENTE.md` para configurar o nome, usar a fila e entender quando um
 arquivo é enviado para revisão.
+
+O modo `-Voz` abre uma janela e aciona a Digitação por Voz do Windows (`Win+H`).
+Revise o texto e confirme antes da execução. A automação não exige chave de API,
+e a transcrição continua limitada aos mesmos comandos seguros da escrita.
 
 ## Segurança do download
 

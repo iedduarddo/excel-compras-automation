@@ -8,6 +8,7 @@ from pathlib import Path
 
 from src import __version__
 from src.assistant.service import FolderAssistant, format_assistant_result
+from src.assistant.voice import recognize_voice
 from src.assistant.workspace import AssistantWorkspace
 from src.core.batch import BatchAutomation, BatchResult
 from src.core.engine import AutomationEngine
@@ -104,6 +105,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Mantém o assistente monitorando entradas e comandos.",
     )
     parser.add_argument(
+        "--voz",
+        "--voice",
+        dest="voice",
+        action="store_true",
+        help="Escuta um comando pelo reconhecedor de fala local do Windows.",
+    )
+    parser.add_argument(
         "--preparar-pastas",
         dest="prepare_assistant",
         action="store_true",
@@ -125,12 +133,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.batch and args.diagnostic:
         parser.error("Use apenas um modo por vez: --lote ou --diagnostico.")
     assistant_options = (
-        args.command or args.watch or args.prepare_assistant or args.assistant_root
+        args.command
+        or args.watch
+        or args.voice
+        or args.prepare_assistant
+        or args.assistant_root
     )
     if assistant_options and not args.assistant:
         parser.error("Use --assistente junto das opções de comando ou monitoramento.")
     assistant_actions = sum(
-        bool(option) for option in (args.command, args.watch, args.prepare_assistant)
+        bool(option)
+        for option in (args.command, args.watch, args.voice, args.prepare_assistant)
     )
     if assistant_actions > 1:
         parser.error("Use apenas uma ação do assistente por execução.")
@@ -162,6 +175,16 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if args.command:
                 result = assistant.execute(" ".join(args.command))
+                print(format_assistant_result(result))
+                return 0 if result.succeeded else 1
+            if args.voice:
+                print("Escutando um comando... fale agora.")
+                recognition = recognize_voice()
+                details = f"idioma {recognition.culture}"
+                if recognition.confidence is not None:
+                    details += f", confiança {recognition.confidence:.0%}"
+                print(f'Comando confirmado por voz: "{recognition.text}" ({details})')
+                result = assistant.execute(recognition.text)
                 print(format_assistant_result(result))
                 return 0 if result.succeeded else 1
             if args.watch:
