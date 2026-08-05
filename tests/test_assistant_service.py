@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 from openpyxl import Workbook
 
@@ -105,3 +107,37 @@ def test_pending_command_is_archived_with_result(tmp_path) -> None:
     assert not command_file.exists()
     assert (workspace.completed_commands_dir / command_file.name).is_file()
     assert (workspace.completed_commands_dir / "001-ajuda_resultado.json").is_file()
+
+
+def test_concurrent_consumers_claim_pending_command_once(tmp_path, monkeypatch) -> None:
+    workspace = AssistantWorkspace(tmp_path / "assistente")
+    workspace.ensure()
+    command_file = workspace.pending_commands_dir / "001-ajuda.txt"
+    command_file.write_text("ajuda", encoding="utf-8")
+    barrier = Barrier(2)
+    original_glob = Path.glob
+
+    def synchronized_glob(path, pattern, *args, **kwargs):
+        matches = list(original_glob(path, pattern, *args, **kwargs))
+        if path == workspace.pending_commands_dir and pattern == "*.txt":
+            barrier.wait(timeout=5)
+        return iter(matches)
+
+    monkeypatch.setattr(Path, "glob", synchronized_glob)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        batches = tuple(
+            executor.map(
+                lambda _: FolderAssistant(workspace).run_pending_once(),
+                range(2),
+            )
+        )
+
+    results = tuple(result for batch in batches for result in batch)
+    assert len(results) == 1
+    assert results[0].succeeded is True
+    assert not command_file.exists()
+    assert (workspace.completed_commands_dir / command_file.name).is_file()
+    assert len(tuple(workspace.completed_commands_dir.glob("*.txt"))) == 1
+    assert not tuple(workspace.pending_commands_dir.glob("*.processing"))
+    assert not tuple(workspace.pending_commands_dir.glob("*.lock"))

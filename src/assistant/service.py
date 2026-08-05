@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from src.assistant.commands import AssistantCommand, AssistantIntent, parse_command
 from src.assistant.workspace import AssistantWorkspace
@@ -155,34 +157,42 @@ class FolderAssistant:
             key=lambda path: path.name.casefold(),
         )
         for command_file in pending:
-            destination_dir = self.workspace.completed_commands_dir
-            try:
-                result = self.execute(command_file.read_text(encoding="utf-8"))
-                if not result.succeeded:
-                    destination_dir = self.workspace.failed_commands_dir
-            except Exception as error:  # noqa: BLE001
-                destination_dir = self.workspace.failed_commands_dir
-                raw = command_file.read_text(encoding="utf-8", errors="replace")
-                fallback = AssistantCommand(AssistantIntent.HELP, raw)
-                result = AssistantResult(
-                    fallback,
-                    items=(
-                        AssistantItemResult(
-                            command_file,
-                            "erro",
-                            str(error),
-                        ),
-                    ),
-                )
+            claim = _claim_command_file(command_file)
+            if claim is None:
+                continue
+            claimed_file, lock_file = claim
 
-            destination = _next_available(destination_dir / command_file.name)
-            shutil.move(str(command_file), destination)
-            self.workspace.write_json_report(
-                destination_dir,
-                destination.stem + "_resultado",
-                _serialize_result(result),
-            )
-            results.append(result)
+            try:
+                destination_dir = self.workspace.completed_commands_dir
+                try:
+                    result = self.execute(claimed_file.read_text(encoding="utf-8"))
+                    if not result.succeeded:
+                        destination_dir = self.workspace.failed_commands_dir
+                except Exception as error:  # noqa: BLE001
+                    destination_dir = self.workspace.failed_commands_dir
+                    raw = claimed_file.read_text(encoding="utf-8", errors="replace")
+                    fallback = AssistantCommand(AssistantIntent.HELP, raw)
+                    result = AssistantResult(
+                        fallback,
+                        items=(
+                            AssistantItemResult(
+                                command_file,
+                                "erro",
+                                str(error),
+                            ),
+                        ),
+                    )
+
+                destination = _next_available(destination_dir / command_file.name)
+                shutil.move(str(claimed_file), destination)
+                self.workspace.write_json_report(
+                    destination_dir,
+                    destination.stem + "_resultado",
+                    _serialize_result(result),
+                )
+                results.append(result)
+            finally:
+                lock_file.unlink(missing_ok=True)
         return tuple(results)
 
     def watch(self) -> None:
@@ -393,6 +403,28 @@ def _next_available(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         counter += 1
+
+
+def _claim_command_file(command_file: Path) -> tuple[Path, Path] | None:
+    lock_file = command_file.with_name(f".{command_file.name}.lock")
+    try:
+        descriptor = os.open(
+            lock_file,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+        )
+    except FileExistsError:
+        return None
+    os.close(descriptor)
+
+    claimed_file = command_file.with_name(
+        f".{command_file.name}.{uuid4().hex}.processing"
+    )
+    try:
+        command_file.replace(claimed_file)
+    except FileNotFoundError:
+        lock_file.unlink(missing_ok=True)
+        return None
+    return claimed_file, lock_file
 
 
 def _help_text() -> str:
