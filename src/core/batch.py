@@ -51,6 +51,7 @@ class BatchAutomation:
         candidate_name: str,
         use_native_pivot: bool = True,
         verbose: bool = False,
+        adapter: str | Path | None = None,
     ) -> BatchResult:
         """Processa as planilhas em ordem alfabética e retorna o resumo."""
 
@@ -58,13 +59,16 @@ class BatchAutomation:
         items: list[BatchItemResult] = []
         for input_file in list_input_files():
             try:
-                result = self.engine.run(
-                    input_value=input_file,
-                    candidate_name=candidate_name,
-                    use_native_pivot=use_native_pivot,
-                    verbose=verbose,
-                    output_label=input_file.stem,
-                )
+                run_options: dict[str, object] = {
+                    "input_value": input_file,
+                    "candidate_name": candidate_name,
+                    "use_native_pivot": use_native_pivot,
+                    "verbose": verbose,
+                    "output_label": input_file.stem,
+                }
+                if adapter is not None:
+                    run_options["adapter"] = adapter
+                result = self.engine.run(**run_options)
             except ExcelDesktopCleanupError:
                 raise
             except AutomationError as error:

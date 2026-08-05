@@ -41,6 +41,14 @@ def make_valid_package(root: Path) -> Path:
         "ajuda",
         encoding="utf-8",
     )
+    (package / "docs" / "ADAPTADORES.md").write_text(
+        "adaptadores",
+        encoding="utf-8",
+    )
+    (package / "docs" / "ASSISTENTE.md").write_text(
+        "assistente",
+        encoding="utf-8",
+    )
     for directory in portable.OPERATING_DIRECTORIES:
         (package / directory).mkdir()
     for filename in (
@@ -116,6 +124,18 @@ def test_validate_portable_package_rejects_unexpected_top_level(
     (package / "setup.ps1").write_text("unexpected", encoding="utf-8")
 
     with pytest.raises(ValueError, match="primeiro nível inválido"):
+        portable.validate_portable_package(package)
+
+
+@pytest.mark.parametrize("guide", ["ADAPTADORES.md", "ASSISTENTE.md"])
+def test_validate_portable_package_requires_new_guides(
+    tmp_path: Path,
+    guide: str,
+) -> None:
+    package = make_valid_package(tmp_path)
+    (package / "docs" / guide).unlink()
+
+    with pytest.raises(ValueError, match="Documentação inesperada"):
         portable.validate_portable_package(package)
 
 

@@ -43,22 +43,29 @@ class AutomationEngine:
         use_native_pivot: bool = True,
         verbose: bool = False,
         output_label: str | None = None,
+        adapter: str | Path | None = None,
+        output_dir: Path | None = None,
+        backup_dir: Path | None = None,
+        log_dir: Path | None = None,
     ) -> RunResult:
         """Processa uma cópia, usa o Excel quando disponível e valida a entrega."""
 
         input_file = resolve_input_file(input_value)
         candidate_name = validate_candidate_name(candidate_name)
-        paths = prepare_run_paths(
-            input_file,
-            candidate_name,
-            output_label=output_label,
-        )
+        path_options: dict[str, Path | str | None] = {"output_label": output_label}
+        if output_dir is not None:
+            path_options["output_dir"] = output_dir
+        if backup_dir is not None:
+            path_options["backup_dir"] = backup_dir
+        if log_dir is not None:
+            path_options["log_dir"] = log_dir
+        paths = prepare_run_paths(input_file, candidate_name, **path_options)
         logger = configure_logging(paths.log_file, verbose=verbose)
         logger.info("Iniciando Excel Compras Automation.")
         logger.info("Entrada: %s", paths.input_file)
         logger.info("Backup criado: %s", paths.backup_file)
 
-        aliases = load_aliases()
+        aliases = load_aliases(adapter)
         rules = load_rules()
         workbook = load_source_workbook(paths.input_file)
         try:

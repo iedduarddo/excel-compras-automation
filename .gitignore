@@ -24,6 +24,7 @@ input/*.xlsm
 output/*
 backup/*
 logs/*
+assistente_planilhas/
 
 # Mantém as pastas vazias no projeto
 !input/.gitkeep

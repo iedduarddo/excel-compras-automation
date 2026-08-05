@@ -731,6 +731,43 @@ Dinâmica nativa.
 .\iniciar.cmd -Verbose
 ```
 
+## 10.7. Usar um adaptador específico
+
+Um perfil JSON pode acrescentar nomes de abas, colunas e indicadores usados por
+outra empresa ou sistema, sem remover o mapeamento padrão:
+
+```powershell
+.\iniciar.cmd `
+    -Diagnostico `
+    -Arquivo "C:\Planilhas\entrada.xlsx" `
+    -Adaptador "C:\Mapeamentos\cliente.json"
+
+.\iniciar.cmd `
+    -NomeCompleto "SEU NOME COMPLETO" `
+    -Arquivo "C:\Planilhas\entrada.xlsx" `
+    -Adaptador "C:\Mapeamentos\cliente.json"
+```
+
+Consulte [docs/ADAPTADORES.md](docs/ADAPTADORES.md) para ver o formato e os
+campos aceitos.
+
+## 10.8. Usar a pasta monitorada
+
+Prepare o assistente local e envie um comando escrito:
+
+```powershell
+.\run.ps1 -Assistente -PrepararPastas
+.\run.ps1 -Assistente -Comando 'reconhecer todas'
+.\run.ps1 -Assistente -Comando 'diagnosticar todas'
+.\run.ps1 -Assistente `
+    -Comando 'processar todas nome="SEU NOME COMPLETO" sem excel'
+```
+
+As planilhas ficam em `assistente_planilhas\entrada`. Formatos desconhecidos
+geram um relatório em `assistente_planilhas\revisao` em vez de serem alterados.
+Consulte [docs/ASSISTENTE.md](docs/ASSISTENTE.md) para conhecer a fila de
+comandos e o modo `-Monitorar`.
+
 ---
 
 # 11. O que acontece durante a execução

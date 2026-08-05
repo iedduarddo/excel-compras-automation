@@ -6,6 +6,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -63,14 +64,22 @@ class DiagnosticReport:
         return 0 if self.ready else 1
 
 
-def run_diagnostics(input_value: str | Path | None) -> DiagnosticReport:
+def run_diagnostics(
+    input_value: str | Path | None,
+    *,
+    adapter: str | Path | None = None,
+) -> DiagnosticReport:
     """Executa verificações sem criar backup, saída ou log."""
 
     items: list[DiagnosticItem] = [check_python_version()]
 
+    aliases_loader = load_aliases
+    if adapter is not None:
+        aliases_loader = partial(load_aliases, adapter)
+
     aliases_item, aliases = _check_configuration(
         name="Aliases",
-        loader=load_aliases,
+        loader=aliases_loader,
         required_keys=REQUIRED_ALIAS_KEYS,
     )
     items.append(aliases_item)

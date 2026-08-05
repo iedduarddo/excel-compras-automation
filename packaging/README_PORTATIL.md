@@ -40,6 +40,33 @@ aplicação produz automaticamente o resumo compatível por fórmulas. A opção
 Os arquivos `config\aliases.json` e `config\rules.json` permanecem externos e
 editáveis. Preserve a estrutura JSON e faça uma cópia antes de alterá-los.
 
+Para uma origem com nomes diferentes de abas ou colunas, mantenha a
+configuração padrão intacta e informe um perfil separado:
+
+```powershell
+.\iniciar.cmd `
+    -Diagnostico `
+    -Arquivo ".\input\planilha_cliente.xlsx" `
+    -Adaptador ".\config\cliente.json"
+```
+
+Depois do diagnóstico aprovado, repita o parâmetro na execução normal ou em
+lote. O formato está documentado em `docs\ADAPTADORES.md`.
+
+## Pasta monitorada
+
+O pacote também pode criar uma central isolada para entradas e comandos:
+
+```powershell
+.\iniciar.cmd -Assistente -PrepararPastas
+.\iniciar.cmd -Assistente -Comando 'diagnosticar todas'
+.\iniciar.cmd -Assistente -Monitorar
+```
+
+Copie as planilhas para `assistente_planilhas\entrada`. Consulte
+`docs\ASSISTENTE.md` para configurar o nome, usar a fila e entender quando um
+arquivo é enviado para revisão.
+
 ## Segurança do download
 
 O executável ainda não possui assinatura de código. Por isso, o Windows
