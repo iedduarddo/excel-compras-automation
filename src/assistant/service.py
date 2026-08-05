@@ -11,6 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 from src.assistant.commands import AssistantCommand, AssistantIntent, parse_command
+from src.assistant.universal import UniversalAutomation
 from src.assistant.workspace import AssistantWorkspace
 from src.core.engine import AutomationEngine
 from src.core.exceptions import AutomationError, ExcelDesktopCleanupError
@@ -40,10 +41,13 @@ class AssistantItemResult:
     status: str
     message: str
     output_file: Path | None = None
+    preview_file: Path | None = None
+    plan_id: str | None = None
+    adapter_file: Path | None = None
 
     @property
     def succeeded(self) -> bool:
-        return self.status == "ok"
+        return self.status in {"ok", "confirmacao", "cancelado"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +71,7 @@ class FolderAssistant:
     ) -> None:
         self.workspace = workspace or AssistantWorkspace()
         self.engine = engine or AutomationEngine()
+        self.universal = UniversalAutomation(self.workspace)
 
     def initialize(self) -> AssistantWorkspace:
         self.workspace.ensure()
@@ -130,8 +135,58 @@ class FolderAssistant:
         self.workspace.ensure()
         if command.intent is AssistantIntent.HELP:
             return AssistantResult(command, message=_help_text())
+        if command.intent is AssistantIntent.CONFIRM:
+            if command.plan_id is None:
+                raise AutomationError("Informe o plano que deve ser confirmado.")
+            execution = self.universal.apply_plan(command.plan_id)
+            return AssistantResult(
+                command,
+                items=(
+                    AssistantItemResult(
+                        execution.source,
+                        "ok",
+                        "Plano confirmado e executado em uma cópia.",
+                        output_file=execution.output_file,
+                        plan_id=execution.plan_id,
+                        adapter_file=execution.adapter_file,
+                    ),
+                ),
+            )
+        if command.intent is AssistantIntent.CANCEL:
+            if command.plan_id is None:
+                raise AutomationError("Informe o plano que deve ser cancelado.")
+            plan = self.universal.cancel_plan(command.plan_id)
+            return AssistantResult(
+                command,
+                items=(
+                    AssistantItemResult(
+                        plan.source,
+                        "cancelado",
+                        "Plano cancelado sem alterar a planilha.",
+                        plan_id=plan.plan_id,
+                    ),
+                ),
+            )
 
         inputs = self._select_inputs(command.target)
+        if command.intent is AssistantIntent.PLAN:
+            items: list[AssistantItemResult] = []
+            for path in inputs:
+                plan, _, preview_file = self.universal.create_plan(
+                    path,
+                    command.actions,
+                    options=command.options,
+                )
+                items.append(
+                    AssistantItemResult(
+                        path,
+                        "confirmacao",
+                        "Prévia criada. Revise e confirme o plano para gerar arquivos.",
+                        preview_file=preview_file,
+                        plan_id=plan.plan_id,
+                    )
+                )
+            return AssistantResult(command, tuple(items))
         if command.intent is AssistantIntent.RECOGNIZE:
             return AssistantResult(
                 command,
@@ -257,6 +312,24 @@ class FolderAssistant:
             f"revisar_{input_file.stem}",
             payload,
         )
+        try:
+            profile = self.universal.profile(input_file)
+        except AutomationError:
+            pass
+        else:
+            generic_payload = asdict(profile)
+            generic_payload["source"] = str(profile.source)
+            self.workspace.write_json_report(
+                self.workspace.review_dir,
+                f"perfil_universal_{input_file.stem}",
+                generic_payload,
+            )
+            return AssistantItemResult(
+                input_file,
+                "ok",
+                "Estrutura tabular reconhecida genericamente. Peça 'gerar "
+                "adaptador' ou uma ação universal para criar a prévia.",
+            )
         return AssistantItemResult(
             input_file,
             "revisao",
@@ -307,7 +380,15 @@ class FolderAssistant:
                 requested_adapter=command.adapter,
             )
             if not recognition.recognized:
-                items.append(self._recognize_item(input_file, command.adapter))
+                self._recognize_item(input_file, command.adapter)
+                items.append(
+                    AssistantItemResult(
+                        input_file,
+                        "revisao",
+                        "A estrutura não é compatível com o fluxo específico de "
+                        "Compras. Use uma ação universal ou gere um adaptador.",
+                    )
+                )
                 continue
             try:
                 result = self.engine.run(
@@ -343,6 +424,13 @@ def format_assistant_result(result: AssistantResult) -> str:
     for item in result.items:
         lines.append(f"[{item.status.upper()}] {item.input_file.name}")
         lines.append(f"        {item.message}")
+        if item.adapter_file is not None:
+            lines.append(f"        Adaptador: {item.adapter_file}")
+        if item.plan_id is not None:
+            lines.append(f"        Plano: {item.plan_id}")
+        if item.preview_file is not None:
+            lines.append(f"        Prévia: {item.preview_file}")
+            lines.append(f'        Para executar: confirmar plano="{item.plan_id}"')
         if item.output_file is not None:
             lines.append(f"        Saída: {item.output_file}")
     lines.append("=" * 72)
@@ -379,6 +467,9 @@ def _serialize_result(result: AssistantResult) -> dict[str, Any]:
             "intent": result.command.intent.value,
             "raw": result.command.raw,
             "target": result.command.target,
+            "actions": [action.value for action in result.command.actions],
+            "plan_id": result.command.plan_id,
+            "options": result.command.options,
         },
         "message": result.message,
         "succeeded": result.succeeded,
@@ -388,6 +479,9 @@ def _serialize_result(result: AssistantResult) -> dict[str, Any]:
                 "status": item.status,
                 "message": item.message,
                 "output_file": str(item.output_file) if item.output_file else None,
+                "preview_file": str(item.preview_file) if item.preview_file else None,
+                "plan_id": item.plan_id,
+                "adapter_file": str(item.adapter_file) if item.adapter_file else None,
             }
             for item in result.items
         ],
@@ -437,5 +531,11 @@ def _help_text() -> str:
             '- processar todas nome="NOME SOBRENOME"',
             '- processar arquivo="planilha.xlsx" nome="NOME SOBRENOME" sem excel',
             '- processar todas nome="NOME SOBRENOME" adaptador="cliente.json"',
+            '- limpar e organizar arquivo="planilha.xlsx"',
+            '- calcular e resumir arquivo="planilha.xlsx" coluna="Valor"',
+            '- criar relatorio arquivo="planilha.xlsx"',
+            '- gerar adaptador arquivo="planilha.xlsx"',
+            '- confirmar plano="IDENTIFICADOR"',
+            '- cancelar plano="IDENTIFICADOR"',
         )
     )

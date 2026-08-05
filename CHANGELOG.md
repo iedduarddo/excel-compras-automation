@@ -12,6 +12,32 @@ com versionamento semântico.
 - avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
 - estudar uma interface gráfica sem alterar o fluxo de linha de comando.
 
+## 1.11.0 - 2026-08-05
+
+### Adicionado
+
+- reconhecimento genérico de tabelas, cabeçalhos, tipos, vazios e duplicidades
+  em planilhas que ainda não possuem mapeamento específico;
+- pedidos universais por voz ou escrita para limpar, organizar, calcular,
+  resumir, criar relatório e gerar adaptador;
+- plano persistente com prévia legível, SHA-256 da origem e confirmação
+  obrigatória antes de criar qualquer arquivo transformado;
+- adaptadores universais gerados com abas, cabeçalhos, posições e tipos, sem
+  misturá-los aos aliases do fluxo específico de Compras.
+
+### Segurança
+
+- originais nunca são sobrescritos e toda transformação gera nova saída e
+  backup;
+- planos são invalidados quando a origem muda após a prévia;
+- pedidos para apagar, sobrescrever ou enviar dados continuam recusados.
+
+### Validado
+
+- regressao real aprovada com previa, confirmacao, nova copia e backup;
+- 230 testes aprovados, com cobertura total de 91,45%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado.
 ## 1.10.0 - 2026-08-05
 
 ### Adicionado

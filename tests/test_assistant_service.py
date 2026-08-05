@@ -40,7 +40,9 @@ def test_assistant_recognizes_supported_workbook(tmp_path) -> None:
     }
 
 
-def test_unknown_workbook_is_sent_to_review_without_modification(tmp_path) -> None:
+def test_unknown_business_workbook_is_recognized_generically_without_modification(
+    tmp_path,
+) -> None:
     workspace = AssistantWorkspace(tmp_path / "assistente")
     workspace.ensure()
     input_file = workspace.input_dir / "desconhecida.xlsx"
@@ -52,13 +54,39 @@ def test_unknown_workbook_is_sent_to_review_without_modification(tmp_path) -> No
 
     result = FolderAssistant(workspace).execute("reconhecer todas")
 
-    assert result.succeeded is False
-    assert result.items[0].status == "revisao"
+    assert result.succeeded is True
+    assert result.items[0].status == "ok"
+    assert "reconhecida genericamente" in result.items[0].message
     assert input_file.read_bytes() == original
     report = workspace.review_dir / "revisar_desconhecida.json"
     payload = json.loads(report.read_text(encoding="utf-8"))
     assert payload["recognized"] is False
     assert payload["observed_headers"]["Sheet"] == ["Produto", "Quantidade"]
+    generic = workspace.review_dir / "perfil_universal_desconhecida.json"
+    generic_payload = json.loads(generic.read_text(encoding="utf-8"))
+    assert generic_payload["tables"][0]["sheet"] == "Sheet"
+
+
+def test_generic_recognition_does_not_enter_business_specific_processing(
+    tmp_path,
+) -> None:
+    workspace = AssistantWorkspace(tmp_path / "assistente")
+    workspace.ensure()
+    input_file = workspace.input_dir / "desconhecida.xlsx"
+    workbook = Workbook()
+    workbook.active.append(["Produto", "Quantidade"])
+    workbook.active.append(["Caneta", 2])
+    workbook.save(input_file)
+    config = json.loads(workspace.config_file.read_text(encoding="utf-8"))
+    config["candidate_name"] = "Maria Aparecida"
+    workspace.config_file.write_text(json.dumps(config), encoding="utf-8")
+
+    result = FolderAssistant(workspace).execute("processar todas")
+
+    assert result.succeeded is False
+    assert result.items[0].status == "revisao"
+    assert "ação universal" in result.items[0].message
+    assert not tuple(workspace.output_dir.iterdir())
 
 
 def test_process_uses_workspace_artifact_directories_and_config(tmp_path) -> None:

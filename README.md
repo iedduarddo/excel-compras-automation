@@ -769,6 +769,21 @@ geram um relatório em `assistente_planilhas\revisao` em vez de serem alterados.
 Consulte [docs/ASSISTENTE.md](docs/ASSISTENTE.md) para conhecer a fila de
 comandos, a entrada por voz e o modo `-Monitorar`.
 
+Pedidos universais também podem reconhecer tabelas que ainda não seguem o
+modelo de Compras. Toda transformação exige duas etapas: primeiro a prévia,
+depois a confirmação pelo identificador exibido:
+
+```powershell
+.\run.ps1 -Assistente `
+    -Comando 'limpar, organizar e resumir arquivo="clientes.xlsx"'
+.\run.ps1 -Assistente `
+    -Comando 'confirmar plano="IDENTIFICADOR"'
+```
+
+As ações permitidas são limpar, organizar, calcular, resumir, criar relatório e
+gerar adaptador. O original não é sobrescrito e qualquer mudança após a prévia
+invalida o plano.
+
 ---
 
 # 11. O que acontece durante a execução
@@ -1094,7 +1109,7 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.10.0: 217 testes aprovados, sem falhas ou erros.
+Resultado esperado na release v1.11.0: 230 testes aprovados, sem falhas ou erros.
 A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
@@ -1116,8 +1131,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.10.0, os 217 testes
-alcançam cobertura total de 93,34%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.11.0, os 230 testes
+alcançam cobertura total de 91,45%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub
