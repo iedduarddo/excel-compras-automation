@@ -6,6 +6,7 @@ param(
     [switch]$Assistente,
     [string]$Comando = "",
     [string]$PastaAssistente = "",
+    [switch]$Voz,
     [switch]$Monitorar,
     [switch]$PrepararPastas,
     [Alias("Diagnostic")]
@@ -28,6 +29,7 @@ Uso:
   .\run.ps1 -Lote -NomeCompleto "NOME SOBRENOME"
   .\run.ps1 -Assistente -PrepararPastas
   .\run.ps1 -Assistente -Comando 'diagnosticar todas'
+  .\run.ps1 -Assistente -Voz
   .\run.ps1 -Assistente -Monitorar
   .\run.ps1 -Diagnostico [-Arquivo "entrada.xlsx"] [-Adaptador "perfil.json"]
   .\run.ps1 -Version
@@ -43,6 +45,7 @@ Opcoes:
   -Assistente         Usa a pasta monitorada e a fila de comandos escritos.
   -Comando            Executa um comando conhecido diretamente.
   -PastaAssistente    Define uma raiz alternativa para as pastas monitoradas.
+  -Voz                Escuta um comando pelo reconhecedor local do Windows.
   -Monitorar          Mantem o assistente aguardando entradas e comandos.
   -PrepararPastas     Cria a estrutura do assistente sem processar arquivos.
   -Diagnostico        Verifica o ambiente sem executar a automacao.
@@ -101,11 +104,11 @@ if (
     (
         -not [string]::IsNullOrWhiteSpace($Comando) -or
         -not [string]::IsNullOrWhiteSpace($PastaAssistente) -or
-        $Monitorar -or $PrepararPastas
+        $Voz -or $Monitorar -or $PrepararPastas
     ) -and
     -not $Assistente
 ) {
-    throw "Use -Assistente junto de -Comando, -Monitorar ou -PrepararPastas."
+    throw "Use -Assistente junto de -Comando, -Voz, -Monitorar ou -PrepararPastas."
 }
 
 $QuantidadeAcoesAssistente = 0
@@ -115,6 +118,10 @@ if (-not [string]::IsNullOrWhiteSpace($Comando)) {
 }
 
 if ($Monitorar) {
+    $QuantidadeAcoesAssistente++
+}
+
+if ($Voz) {
     $QuantidadeAcoesAssistente++
 }
 
@@ -161,6 +168,10 @@ else {
 
         if ($Monitorar) {
             $ApplicationArguments += "--monitorar"
+        }
+
+        if ($Voz) {
+            $ApplicationArguments += "--voz"
         }
 
         if ($PrepararPastas) {

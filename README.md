@@ -759,6 +759,7 @@ Prepare o assistente local e envie um comando escrito:
 .\run.ps1 -Assistente -PrepararPastas
 .\run.ps1 -Assistente -Comando 'reconhecer todas'
 .\run.ps1 -Assistente -Comando 'diagnosticar todas'
+.\run.ps1 -Assistente -Voz
 .\run.ps1 -Assistente `
     -Comando 'processar todas nome="SEU NOME COMPLETO" sem excel'
 ```
@@ -766,7 +767,7 @@ Prepare o assistente local e envie um comando escrito:
 As planilhas ficam em `assistente_planilhas\entrada`. Formatos desconhecidos
 geram um relatório em `assistente_planilhas\revisao` em vez de serem alterados.
 Consulte [docs/ASSISTENTE.md](docs/ASSISTENTE.md) para conhecer a fila de
-comandos e o modo `-Monitorar`.
+comandos, a entrada por voz e o modo `-Monitorar`.
 
 ---
 
