@@ -31,6 +31,8 @@ def test_workspace_creates_expected_structure_without_overwriting_config(
         workspace.logs_dir,
         workspace.review_dir,
         workspace.adapters_dir,
+        workspace.universal_adapters_dir,
+        workspace.plans_dir,
         workspace.pending_commands_dir,
         workspace.completed_commands_dir,
         workspace.failed_commands_dir,

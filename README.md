@@ -769,6 +769,21 @@ geram um relatório em `assistente_planilhas\revisao` em vez de serem alterados.
 Consulte [docs/ASSISTENTE.md](docs/ASSISTENTE.md) para conhecer a fila de
 comandos, a entrada por voz e o modo `-Monitorar`.
 
+Pedidos universais também podem reconhecer tabelas que ainda não seguem o
+modelo de Compras. Toda transformação exige duas etapas: primeiro a prévia,
+depois a confirmação pelo identificador exibido:
+
+```powershell
+.\run.ps1 -Assistente `
+    -Comando 'limpar, organizar e resumir arquivo="clientes.xlsx"'
+.\run.ps1 -Assistente `
+    -Comando 'confirmar plano="IDENTIFICADOR"'
+```
+
+As ações permitidas são limpar, organizar, calcular, resumir, criar relatório e
+gerar adaptador. O original não é sobrescrito e qualquer mudança após a prévia
+invalida o plano.
+
 ---
 
 # 11. O que acontece durante a execução

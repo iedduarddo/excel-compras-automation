@@ -58,6 +58,32 @@ pasta temporária do PyInstaller.
 Interpreta os argumentos do terminal e apresenta o resultado. Não conhece
 detalhes de Excel.
 
+### `src/assistant/commands.py`
+
+Transforma pedidos escritos ou transcritos por voz em intenções e ações de uma
+lista permitida. Não avalia código, macros nem fórmulas livres.
+
+### `src/assistant/universal.py`
+
+Perfila tabelas desconhecidas, infere cabeçalhos e tipos, cria um plano com
+SHA-256 e prévia e aplica somente planos confirmados. O executor trabalha em
+uma cópia, valida todos os caminhos persistidos e mantém os adaptadores
+universais separados dos aliases do fluxo de Compras.
+
+O fluxo universal é deliberadamente dividido em duas transações:
+
+```text
+pedido -> perfil -> plano + prévia -> confirmação -> backup + nova saída
+```
+
+Uma alteração na origem entre o plano e a confirmação interrompe a execução.
+
+### `src/assistant/service.py`
+
+Orquestra a pasta monitorada, a fila concorrente, o fluxo específico de Compras
+e a automação universal. Uma estrutura genérica reconhecida nunca é enviada
+acidentalmente ao `AutomationEngine` de Compras.
+
 ### `src/core/batch.py`
 
 Coordena o processamento sequencial das planilhas válidas da pasta

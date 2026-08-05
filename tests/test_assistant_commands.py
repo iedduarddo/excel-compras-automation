@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from src.assistant.commands import AssistantIntent, parse_command
+from src.assistant.universal import UniversalAction
 from src.core.exceptions import AutomationError
 
 
@@ -55,3 +56,40 @@ def test_parse_supported_intents(text: str, intent: AssistantIntent) -> None:
 def test_parse_rejects_empty_or_unsupported_commands(text: str) -> None:
     with pytest.raises(AutomationError):
         parse_command(text)
+
+
+def test_parse_varied_universal_request_builds_safe_plan() -> None:
+    command = parse_command(
+        'Por favor, limpe, organize e crie um relatório de arquivo="clientes.xlsx" '
+        'remover duplicados ordenar por="Cidade" decrescente'
+    )
+
+    assert command.intent is AssistantIntent.PLAN
+    assert command.target == "clientes.xlsx"
+    assert command.actions == (
+        UniversalAction.CLEAN,
+        UniversalAction.ORGANIZE,
+        UniversalAction.REPORT,
+    )
+    assert command.options == {
+        "remove_duplicates": True,
+        "descending": True,
+        "sort_column": "Cidade",
+    }
+
+
+@pytest.mark.parametrize(
+    ("text", "intent"),
+    [
+        ('confirmar plano="a1b2c3d4e5f6"', AssistantIntent.CONFIRM),
+        ("cancele o plano a1b2c3d4e5f6", AssistantIntent.CANCEL),
+    ],
+)
+def test_parse_plan_decision_requires_explicit_identifier(
+    text: str,
+    intent: AssistantIntent,
+) -> None:
+    command = parse_command(text)
+
+    assert command.intent is intent
+    assert command.plan_id == "a1b2c3d4e5f6"
