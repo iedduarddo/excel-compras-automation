@@ -6,6 +6,14 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
+
+## 1.11.0 - 2026-08-05
+
 ### Adicionado
 
 - reconhecimento genérico de tabelas, cabeçalhos, tipos, vazios e duplicidades
@@ -24,12 +32,12 @@ com versionamento semântico.
 - planos são invalidados quando a origem muda após a prévia;
 - pedidos para apagar, sobrescrever ou enviar dados continuam recusados.
 
-### Planejado
+### Validado
 
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
-- estudar uma interface gráfica sem alterar o fluxo de linha de comando.
-
+- regressao real aprovada com previa, confirmacao, nova copia e backup;
+- 230 testes aprovados, com cobertura total de 91,45%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado.
 ## 1.10.0 - 2026-08-05
 
 ### Adicionado
