@@ -12,6 +12,30 @@ com versionamento semântico.
 - avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
 - estudar uma interface gráfica sem alterar o fluxo de linha de comando.
 
+## 1.9.0 - 2026-08-04
+
+### Adicionado
+
+- perfis JSON de adaptador para acrescentar nomes específicos de abas,
+  colunas e indicadores sem alterar o mapeamento padrão;
+- opção `--adaptador` na interface Python e `-Adaptador` nos iniciadores
+  Windows, disponível também no diagnóstico e no processamento em lote;
+- validação estrita dos grupos e campos canônicos declarados pelo adaptador.
+- pasta `assistente_planilhas` com entrada, saída, backup, revisão, adaptadores,
+  logs e fila persistente de comandos;
+- comandos escritos para reconhecer, diagnosticar e processar uma ou várias
+  planilhas, com modo de monitoramento local;
+- encaminhamento seguro de formatos desconhecidos para revisão, sem modificar
+  o arquivo original.
+
+### Validado
+
+- 202 testes aprovados no Windows, com cobertura total de 93,18%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil Windows x64 aprovado no commit integrado;
+- regressao real aprovada com reconhecimento automatico, diagnostico e
+  processamento por comando escrito, preservando a planilha original.
+
 ## 1.8.0 — 2026-08-04
 
 ### Adicionado

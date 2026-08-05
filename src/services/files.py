@@ -89,16 +89,23 @@ def prepare_run_paths(
     candidate_name: str,
     *,
     output_label: str | None = None,
+    output_dir: Path | None = None,
+    backup_dir: Path | None = None,
+    log_dir: Path | None = None,
 ) -> RunPaths:
     """Define nomes únicos e cria o backup antes do processamento."""
 
-    ensure_project_directories()
+    output_dir = output_dir or OUTPUT_DIR
+    backup_dir = backup_dir or BACKUP_DIR
+    log_dir = log_dir or LOG_DIR
+    for directory in (output_dir, backup_dir, log_dir):
+        directory.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).astimezone().strftime("%Y%m%d_%H%M%S")
     safe_candidate = sanitize_filename(candidate_name)
     safe_label = sanitize_filename(output_label) if output_label else ""
 
     backup_file = _next_available_path(
-        BACKUP_DIR,
+        backup_dir,
         f"{input_file.stem}_backup_{timestamp}",
         input_file.suffix,
     )
@@ -106,12 +113,12 @@ def prepare_run_paths(
     if safe_label:
         output_stem += f"_{safe_label}"
     output_file = _next_available_path(
-        OUTPUT_DIR,
+        output_dir,
         output_stem,
         input_file.suffix,
         collision_suffix=timestamp,
     )
-    log_file = _next_available_path(LOG_DIR, f"execucao_{timestamp}", ".log")
+    log_file = _next_available_path(log_dir, f"execucao_{timestamp}", ".log")
     shutil.copy2(input_file, backup_file)
 
     return RunPaths(

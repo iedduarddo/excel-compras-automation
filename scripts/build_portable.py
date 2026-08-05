@@ -39,6 +39,11 @@ REQUIRED_TOP_LEVEL = {
     "run.ps1",
     "VERSAO.txt",
 }
+REQUIRED_DOCS = {
+    "ADAPTADORES.md",
+    "ASSISTENTE.md",
+    "SOLUCAO_DE_PROBLEMAS.md",
+}
 FORBIDDEN_DIRECTORY_NAMES = {
     ".git",
     ".pytest_cache",
@@ -295,10 +300,11 @@ def assemble_portable_package(
 
     docs_directory = package_directory / "docs"
     docs_directory.mkdir()
-    shutil.copy2(
-        project_root / "docs" / "SOLUCAO_DE_PROBLEMAS.md",
-        docs_directory / "SOLUCAO_DE_PROBLEMAS.md",
-    )
+    for filename in sorted(REQUIRED_DOCS):
+        shutil.copy2(
+            project_root / "docs" / filename,
+            docs_directory / filename,
+        )
 
     version_marker = f"v{version}"
     for source_name, destination_name in (
@@ -343,6 +349,10 @@ def validate_portable_package(package_directory: Path) -> None:
         json.loads(
             (package_directory / "config" / filename).read_text(encoding="utf-8")
         )
+
+    docs_files = {path.name for path in (package_directory / "docs").iterdir()}
+    if docs_files != REQUIRED_DOCS:
+        raise ValueError(f"Documentação inesperada: {sorted(docs_files)}")
 
     for directory_name in OPERATING_DIRECTORIES:
         directory = package_directory / directory_name

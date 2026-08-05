@@ -38,6 +38,8 @@ def test_build_parser_maps_all_command_line_options() -> None:
             "entrada.xlsx",
             "--nome",
             "Carlos Eduardo",
+            "--adaptador",
+            "config/cliente.json",
             "--sem-pivot-nativo",
             "--verbose",
             "--diagnostic",
@@ -46,6 +48,7 @@ def test_build_parser_maps_all_command_line_options() -> None:
 
     assert args.input == Path("entrada.xlsx")
     assert args.candidate_name == "Carlos Eduardo"
+    assert args.adapter == Path("config/cliente.json")
     assert args.sem_pivot_nativo is True
     assert args.verbose is True
     assert args.diagnostic is True
@@ -54,12 +57,58 @@ def test_build_parser_maps_all_command_line_options() -> None:
     assert batch_args.batch is True
     assert batch_args.input is None
 
+    assistant_args = main_module.build_parser().parse_args(
+        ["--assistente", "--comando", "ajuda", "--pasta-assistente", "central"]
+    )
+    assert assistant_args.assistant is True
+    assert assistant_args.command == ["ajuda"]
+    assert assistant_args.assistant_root == Path("central")
+
 
 def test_parser_rejects_batch_with_explicit_input() -> None:
     with pytest.raises(SystemExit) as error:
         main_module.build_parser().parse_args(["--lote", "--input", "entrada.xlsx"])
 
     assert error.value.code == 2
+
+
+def test_main_prepares_assistant_workspace(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "central"
+
+    exit_code = main_module.main(
+        [
+            "--assistente",
+            "--preparar-pastas",
+            "--pasta-assistente",
+            str(root),
+        ]
+    )
+
+    assert exit_code == 0
+    assert (root / "entrada").is_dir()
+    assert (root / "comandos" / "pendentes").is_dir()
+    assert "Pastas do assistente preparadas" in capsys.readouterr().out
+
+
+def test_main_executes_assistant_help_command(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    exit_code = main_module.main(
+        [
+            "--assistente",
+            "--comando",
+            "ajuda",
+            "--pasta-assistente",
+            str(tmp_path / "central"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert "Comandos disponíveis" in capsys.readouterr().out
 
 
 def test_main_runs_engine_and_prints_native_result(
@@ -114,12 +163,15 @@ def test_main_prompts_for_name_and_reports_fallback(
     monkeypatch.setattr(main_module, "AutomationEngine", FakeEngine)
     monkeypatch.setattr("builtins.input", lambda _: "  Carlos Eduardo  ")
 
-    exit_code = main_module.main(["--sem-pivot-nativo"])
+    exit_code = main_module.main(
+        ["--sem-pivot-nativo", "--adaptador", "config/cliente.json"]
+    )
 
     output = capsys.readouterr().out
     assert exit_code == 0
     assert received["candidate_name"] == "Carlos Eduardo"
     assert received["use_native_pivot"] is False
+    assert received["adapter"] == Path("config/cliente.json")
     assert "resumo compatível com fórmulas" in output
 
 
@@ -286,5 +338,9 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert '$NomeCompleto = Read-Host "Digite seu nome completo"' in script
     assert "exit $ExitCode" in script
     assert "[switch]$Lote" in script
+    assert "[string]$Adaptador" in script
+    assert '@("--adaptador", $Adaptador)' in script
+    assert "$QuantidadeAcoesAssistente = 0" in script
+    assert "$AcoesAssistente.Count" not in script
     assert '$ApplicationArguments += "--lote"' in script
     assert "Nao combine -Lote com -Arquivo" in script

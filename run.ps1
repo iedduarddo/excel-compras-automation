@@ -1,7 +1,13 @@
 param(
     [string]$NomeCompleto = "",
     [string]$Arquivo = "",
+    [string]$Adaptador = "",
     [switch]$Lote,
+    [switch]$Assistente,
+    [string]$Comando = "",
+    [string]$PastaAssistente = "",
+    [switch]$Monitorar,
+    [switch]$PrepararPastas,
     [Alias("Diagnostic")]
     [switch]$Diagnostico,
     [switch]$Version,
@@ -20,7 +26,10 @@ Excel Compras Automation
 Uso:
   .\run.ps1 -NomeCompleto "NOME SOBRENOME" [-Arquivo "entrada.xlsx"]
   .\run.ps1 -Lote -NomeCompleto "NOME SOBRENOME"
-  .\run.ps1 -Diagnostico [-Arquivo "entrada.xlsx"]
+  .\run.ps1 -Assistente -PrepararPastas
+  .\run.ps1 -Assistente -Comando 'diagnosticar todas'
+  .\run.ps1 -Assistente -Monitorar
+  .\run.ps1 -Diagnostico [-Arquivo "entrada.xlsx"] [-Adaptador "perfil.json"]
   .\run.ps1 -Version
   .\run.ps1 -Help
 
@@ -30,6 +39,12 @@ Opcoes:
   -Arquivo            Caminho opcional da planilha. Quando omitido, a aplicacao
                       usa a unica planilha existente na pasta input.
   -Lote               Processa todas as planilhas validas da pasta input.
+  -Adaptador          Perfil JSON opcional com aliases especificos da origem.
+  -Assistente         Usa a pasta monitorada e a fila de comandos escritos.
+  -Comando            Executa um comando conhecido diretamente.
+  -PastaAssistente    Define uma raiz alternativa para as pastas monitoradas.
+  -Monitorar          Mantem o assistente aguardando entradas e comandos.
+  -PrepararPastas     Cria a estrutura do assistente sem processar arquivos.
   -Diagnostico        Verifica o ambiente sem executar a automacao.
   -Diagnostic         Alias de -Diagnostico.
   -Version            Mostra a versao da aplicacao.
@@ -82,6 +97,47 @@ if ($Lote -and -not [string]::IsNullOrWhiteSpace($Arquivo)) {
     throw "Nao combine -Lote com -Arquivo. O lote usa a pasta input."
 }
 
+if (
+    (
+        -not [string]::IsNullOrWhiteSpace($Comando) -or
+        -not [string]::IsNullOrWhiteSpace($PastaAssistente) -or
+        $Monitorar -or $PrepararPastas
+    ) -and
+    -not $Assistente
+) {
+    throw "Use -Assistente junto de -Comando, -Monitorar ou -PrepararPastas."
+}
+
+$QuantidadeAcoesAssistente = 0
+
+if (-not [string]::IsNullOrWhiteSpace($Comando)) {
+    $QuantidadeAcoesAssistente++
+}
+
+if ($Monitorar) {
+    $QuantidadeAcoesAssistente++
+}
+
+if ($PrepararPastas) {
+    $QuantidadeAcoesAssistente++
+}
+
+if ($QuantidadeAcoesAssistente -gt 1) {
+    throw "Use apenas uma acao do assistente por execucao."
+}
+
+if (
+    $Assistente -and
+    (
+        $Lote -or $Diagnostico -or
+        -not [string]::IsNullOrWhiteSpace($Arquivo) -or
+        -not [string]::IsNullOrWhiteSpace($NomeCompleto) -or
+        -not [string]::IsNullOrWhiteSpace($Adaptador)
+    )
+) {
+    throw "O assistente usa sua propria pasta e nao aceita os modos tradicionais."
+}
+
 $ApplicationArguments = @()
 
 if (-not $UsePortableExecutable) {
@@ -92,35 +148,60 @@ if ($Version) {
     $ApplicationArguments += "--version"
 }
 else {
-    if (-not [string]::IsNullOrWhiteSpace($Arquivo)) {
-        $ApplicationArguments += @("--input", $Arquivo)
-    }
+    if ($Assistente) {
+        $ApplicationArguments += "--assistente"
 
-    if ($Diagnostico) {
-        $ApplicationArguments += "--diagnostico"
+        if (-not [string]::IsNullOrWhiteSpace($PastaAssistente)) {
+            $ApplicationArguments += @("--pasta-assistente", $PastaAssistente)
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($Comando)) {
+            $ApplicationArguments += @("--comando", $Comando)
+        }
+
+        if ($Monitorar) {
+            $ApplicationArguments += "--monitorar"
+        }
+
+        if ($PrepararPastas) {
+            $ApplicationArguments += "--preparar-pastas"
+        }
     }
     else {
-        if ($Lote) {
-            $ApplicationArguments += "--lote"
+        if (-not [string]::IsNullOrWhiteSpace($Arquivo)) {
+            $ApplicationArguments += @("--input", $Arquivo)
         }
 
-        if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
-            $NomeCompleto = Read-Host "Digite seu nome completo"
+        if (-not [string]::IsNullOrWhiteSpace($Adaptador)) {
+            $ApplicationArguments += @("--adaptador", $Adaptador)
         }
 
-        if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
-            throw "Informe seu nome completo para executar a automacao."
+        if ($Diagnostico) {
+            $ApplicationArguments += "--diagnostico"
+        }
+        else {
+            if ($Lote) {
+                $ApplicationArguments += "--lote"
+            }
+
+            if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
+                $NomeCompleto = Read-Host "Digite seu nome completo"
+            }
+
+            if ([string]::IsNullOrWhiteSpace($NomeCompleto)) {
+                throw "Informe seu nome completo para executar a automacao."
+            }
+
+            $ApplicationArguments += @("--candidate-name", $NomeCompleto.Trim())
         }
 
-        $ApplicationArguments += @("--candidate-name", $NomeCompleto.Trim())
-    }
+        if ($SemPivotNativo) {
+            $ApplicationArguments += "--sem-pivot-nativo"
+        }
 
-    if ($SemPivotNativo) {
-        $ApplicationArguments += "--sem-pivot-nativo"
-    }
-
-    if ($Verbose) {
-        $ApplicationArguments += "--verbose"
+        if ($Verbose) {
+            $ApplicationArguments += "--verbose"
+        }
     }
 }
 
