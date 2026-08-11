@@ -6,6 +6,21 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Alterado
+
+- interface principal reorganizada em abas Assistente e ConfiguraÃ§Ãµes,
+  com fluxo visual em trÃªs etapas, contadores e mensagens mais claras;
+- lista de planilhas e prÃ©via agora possuem barras de rolagem;
+- operaÃ§Ãµes em segundo plano exibem progresso e bloqueiam cliques duplicados;
+- adicionados atalhos de teclado e testes da confirmaÃ§Ã£o dos planos visÃ­veis.
+
+- interface Qt Quick com cartoes arredondados, navegacao lateral e confirmacao
+  visual em duas etapas;
+- Mica e cantos nativos no Windows 11, com fallback solido acessivel;
+- dependencia Qt isolada no pacote desktop, sem aumentar o pacote portatil;
+- smoke test QML e validacoes de tokens de confirmacao obsoletos.
+- alternancia persistente entre os temas claro e escuro e estabilizacao do
+  fundo Mica em janelas redimensionadas.
 ### Planejado
 
 - avaliar um runner Windows próprio para testes de integração com Excel Desktop;

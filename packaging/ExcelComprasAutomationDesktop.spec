@@ -5,15 +5,24 @@ from pathlib import Path
 
 
 project_root = Path(SPECPATH).parent
-hidden_imports = []
+hidden_imports = [
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtQml",
+    "PySide6.QtQuick",
+    "PySide6.QtQuickControls2",
+]
 if sys.platform == "win32":
-    hidden_imports = ["pythoncom", "pywintypes", "win32com", "win32com.client"]
+    hidden_imports += ["pythoncom", "pywintypes", "win32com", "win32com.client"]
 
 analysis = Analysis(
     [str(project_root / "desktop.py")],
     pathex=[str(project_root)],
     binaries=[],
-    datas=[(str(project_root / "config"), "config")],
+    datas=[
+        (str(project_root / "config"), "config"),
+        (str(project_root / "src" / "gui" / "qml"), "src/gui/qml"),
+    ],
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},

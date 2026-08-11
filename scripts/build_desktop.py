@@ -119,7 +119,7 @@ def smoke_test_application(artifact: Path, target: str) -> None:
     executable = _application_executable(artifact, target)
     if not executable.is_file():
         raise RuntimeError(f"Executável gráfico ausente: {executable}")
-    _run([str(executable), "--smoke-test"], cwd=artifact.parent, timeout=120)
+    _run([str(executable), "--smoke-test-qt"], cwd=artifact.parent, timeout=120)
 
 
 def assemble_package(
@@ -146,6 +146,7 @@ def assemble_package(
     for source_name, destination_name in (
         ("README_DESKTOP.md", "README_DESKTOP.md"),
         ("LEIA-ME-DESKTOP.txt", "LEIA-ME.txt"),
+        ("THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
     ):
         content = (project_root / "packaging" / source_name).read_text(encoding="utf-8")
         (package / destination_name).write_text(
@@ -167,7 +168,13 @@ def assemble_package(
 
 
 def validate_package(package: Path, target: str) -> None:
-    common = {"config", "LEIA-ME.txt", "README_DESKTOP.md", "VERSAO.txt"}
+    common = {
+        "config",
+        "LEIA-ME.txt",
+        "README_DESKTOP.md",
+        "THIRD_PARTY_NOTICES.md",
+        "VERSAO.txt",
+    }
     expected = (
         common | {MAC_APP_NAME}
         if target.startswith("macos-")

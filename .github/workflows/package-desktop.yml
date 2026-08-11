@@ -20,6 +20,10 @@ on:
       - "src/**"
       - "tests/test_build_desktop.py"
       - "tests/test_gui_controller.py"
+      - "packaging/THIRD_PARTY_NOTICES.md"
+      - "tests/test_gui_app.py"
+      - "tests/test_gui_bridge_qt.py"
+      - "tests/test_native_materials.py"
   pull_request:
     branches:
       - main
@@ -38,6 +42,10 @@ on:
       - "src/**"
       - "tests/test_build_desktop.py"
       - "tests/test_gui_controller.py"
+      - "packaging/THIRD_PARTY_NOTICES.md"
+      - "tests/test_gui_app.py"
+      - "tests/test_gui_bridge_qt.py"
+      - "tests/test_native_materials.py"
 
 permissions:
   contents: read
@@ -80,20 +88,27 @@ jobs:
             requirements.txt
             requirements-dev.txt
             requirements-build.txt
+            requirements-desktop-build.txt
 
       - name: Instalar dependências
-        run: python -m pip install --requirement requirements-build.txt
+        run: python -m pip install --requirement requirements-desktop-build.txt
 
-      - name: Validar Tk
-        run: python -c "import tkinter; print(tkinter.TkVersion)"
+      - name: Validar Qt Quick
+        run: python -c "from PySide6 import QtCore; print(QtCore.qVersion())"
 
       - name: Verificar qualidade e testes
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QSG_RHI_BACKEND: software
         run: |
           python -m ruff check .
           python -m ruff format --check .
           python -m pytest --cov=src --cov-report=term-missing -q
 
       - name: Construir e validar aplicativo
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QSG_RHI_BACKEND: software
         run: python scripts/build_desktop.py --commit "${{ github.sha }}"
 
       - name: Publicar artefato de inspeção
