@@ -69,6 +69,12 @@ def test_build_parser_maps_all_command_line_options() -> None:
     assert voice_args.assistant is True
     assert voice_args.voice is True
 
+    gui_args = main_module.build_parser().parse_args(
+        ["--interface", "--pasta-assistente", "central"]
+    )
+    assert gui_args.gui is True
+    assert gui_args.assistant_root == Path("central")
+
 
 def test_parser_rejects_batch_with_explicit_input() -> None:
     with pytest.raises(SystemExit) as error:
@@ -147,6 +153,33 @@ def test_main_transcribes_and_executes_voice_command(
 def test_main_rejects_voice_without_assistant() -> None:
     with pytest.raises(SystemExit) as error:
         main_module.main(["--voz"])
+
+    assert error.value.code == 2
+
+
+def test_main_opens_graphical_interface(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    received: dict[str, object] = {}
+
+    def run_gui(root: Path | None) -> int:
+        received["root"] = root
+        return 0
+
+    monkeypatch.setattr("src.gui.app.run_desktop_app", run_gui)
+
+    exit_code = main_module.main(
+        ["--interface", "--pasta-assistente", str(tmp_path / "central")]
+    )
+
+    assert exit_code == 0
+    assert received == {"root": tmp_path / "central"}
+
+
+def test_main_rejects_graphical_interface_with_traditional_mode() -> None:
+    with pytest.raises(SystemExit) as error:
+        main_module.main(["--interface", "--lote"])
 
     assert error.value.code == 2
 
@@ -380,9 +413,11 @@ def test_run_script_exposes_read_only_diagnostic_and_version_modes() -> None:
     assert "[switch]$Lote" in script
     assert "[string]$Adaptador" in script
     assert "[switch]$Voz" in script
+    assert "[switch]$Interface" in script
     assert '@("--adaptador", $Adaptador)' in script
     assert "$QuantidadeAcoesAssistente = 0" in script
     assert "$AcoesAssistente.Count" not in script
     assert '$ApplicationArguments += "--lote"' in script
     assert '$ApplicationArguments += "--voz"' in script
+    assert '$ApplicationArguments += "--interface"' in script
     assert "Nao combine -Lote com -Arquivo" in script

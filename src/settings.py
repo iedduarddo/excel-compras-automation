@@ -16,12 +16,20 @@ def _resolve_project_root(
     frozen: bool | None = None,
     executable: str | Path | None = None,
     module_file: str | Path | None = None,
+    platform_name: str | None = None,
 ) -> Path:
     """Localiza a raiz persistente no código-fonte e no pacote portátil."""
 
     is_frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     if is_frozen:
         executable_path = Path(executable or sys.executable)
+        current_platform = platform_name or sys.platform
+        if (
+            current_platform == "darwin"
+            and executable_path.parent.name == "MacOS"
+            and executable_path.parent.parent.name == "Contents"
+        ):
+            return executable_path.resolve().parents[3]
         return executable_path.resolve().parent
 
     source_path = Path(module_file or __file__)
@@ -29,7 +37,31 @@ def _resolve_project_root(
 
 
 PROJECT_ROOT = _resolve_project_root()
-CONFIG_DIR = PROJECT_ROOT / "config"
+
+
+def _resolve_config_dir(
+    project_root: Path,
+    *,
+    frozen: bool | None = None,
+    bundle_root: str | Path | None = None,
+) -> Path:
+    """Prefere configuração externa e recorre aos recursos empacotados."""
+
+    external = project_root / "config"
+    if external.is_dir():
+        return external
+    is_frozen = getattr(sys, "frozen", False) if frozen is None else frozen
+    if is_frozen:
+        embedded_root = Path(
+            bundle_root or getattr(sys, "_MEIPASS", project_root)
+        ).resolve()
+        embedded = embedded_root / "config"
+        if embedded.is_dir():
+            return embedded
+    return external
+
+
+CONFIG_DIR = _resolve_config_dir(PROJECT_ROOT)
 INPUT_DIR = PROJECT_ROOT / "input"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 BACKUP_DIR = PROJECT_ROOT / "backup"
