@@ -27,6 +27,19 @@ ApplicationWindow {
     property color cardBorder: darkMode ? Qt.rgba(1, 1, 1, 0.14)
                                         : Qt.rgba(1, 1, 1, 0.88)
     property color accentColor: "#0f6cbd"
+    readonly property real referenceWidth: 1280.0
+    readonly property real referenceHeight: 820.0
+    readonly property real viewportScale: Math.min(width / referenceWidth, height / referenceHeight)
+    readonly property real typographyScale: Math.max(0.92, Math.min(1.18, viewportScale))
+    readonly property int fontCaption: Math.max(10, Math.round(11 * typographyScale))
+    readonly property int fontSmall: Math.max(11, Math.round(12 * typographyScale))
+    readonly property int fontBody: Math.max(12, Math.round(13 * typographyScale))
+    readonly property int fontControl: Math.max(12, Math.round(14 * typographyScale))
+    readonly property int fontSection: Math.max(15, Math.round(17 * typographyScale))
+    readonly property int fontDialogTitle: Math.max(18, Math.round(20 * typographyScale))
+    readonly property int fontPageTitle: Math.max(21, Math.round(24 * typographyScale))
+    readonly property bool compactHeader: width < 1120
+    font.pixelSize: fontControl
 
     function executeQuick(command) {
         commandField.text = command
@@ -69,14 +82,14 @@ ApplicationWindow {
                 Text {
                     text: "EXCEL COMPRAS"
                     color: window.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: window.fontCaption
                     font.weight: Font.DemiBold
-                    font.letterSpacing: 1.4
+                    font.letterSpacing: 1.4 * window.typographyScale
                 }
                 Text {
                     text: "Automation"
                     color: window.textColor
-                    font.pixelSize: 23
+                    font.pixelSize: window.fontPageTitle
                     font.weight: Font.DemiBold
                     Layout.bottomMargin: 18
                 }
@@ -117,14 +130,14 @@ ApplicationWindow {
                         Text {
                             text: "Modo seguro"
                             color: window.textColor
-                            font.pixelSize: 13
+                            font.pixelSize: window.fontBody
                             font.weight: Font.DemiBold
                         }
                         Text {
                             width: parent.width
                             text: "Previa e confirmacao obrigatorias"
                             color: window.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: window.fontCaption
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -133,7 +146,7 @@ ApplicationWindow {
                 Text {
                     text: "v" + appVersion + "  •  " + window.nativeMaterialName
                     color: window.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: window.fontCaption
                     Layout.topMargin: 8
                 }
             }
@@ -145,37 +158,69 @@ ApplicationWindow {
             spacing: 12
 
             GlassCard {
+                id: headerCard
+                objectName: "headerCard"
                 Layout.fillWidth: true
-                Layout.preferredHeight: 86
-                Layout.minimumHeight: 86
+                Layout.preferredHeight: window.compactHeader ? 126 : 86
+                Layout.minimumHeight: window.compactHeader ? 126 : 86
                 surfaceColor: window.cardColor
                 borderColor: window.cardBorder
                 padding: 14
 
-                RowLayout {
+                GridLayout {
+                    id: headerLayout
+                    objectName: "headerLayout"
                     anchors.fill: parent
-                    spacing: 12
+                    columns: window.compactHeader ? 2 : 3
+                    columnSpacing: 12
+                    rowSpacing: 8
 
                     ColumnLayout {
+                        id: headerTextBlock
+                        Layout.row: 0
+                        Layout.column: 0
+                        Layout.columnSpan: window.compactHeader ? 2 : 1
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredWidth: window.compactHeader
+                                               ? 0
+                                               : Math.max(
+                                                     160,
+                                                     headerLayout.width
+                                                     - themeToggleButton.implicitWidth
+                                                     - statusPill.implicitWidth
+                                                     - (2 * headerLayout.columnSpacing)
+                                                 )
+                        clip: true
                         spacing: 2
                         Text {
+                            id: headerTitle
+                            objectName: "headerTitle"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             text: window.currentPage === 0 ? "Central de automacao" : "Preferencias"
                             color: window.textColor
-                            font.pixelSize: 24
+                            font.pixelSize: window.fontPageTitle
                             font.weight: Font.DemiBold
+                            elide: Text.ElideRight
                         }
                         Text {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             text: window.currentPage === 0
                                   ? "Importe, descreva e confirme antes de gerar qualquer copia."
                                   : "Personalize a execucao sem alterar os limites de seguranca."
                             color: window.mutedColor
-                            font.pixelSize: 12
+                            font.pixelSize: window.fontSmall
+                            elide: Text.ElideRight
                         }
                     }
 
                     FluentButton {
+                        id: themeToggleButton
                         objectName: "themeToggleButton"
+                        Layout.row: window.compactHeader ? 1 : 0
+                        Layout.column: window.compactHeader ? 0 : 1
                         text: window.darkMode ? "Modo claro" : "Modo escuro"
                         textColor: window.textColor
                         surfaceColor: window.darkMode ? "#253247" : "#f7f9fc"
@@ -183,7 +228,16 @@ ApplicationWindow {
                     }
 
                     Rectangle {
-                        implicitWidth: statusText.implicitWidth + 28
+                        id: statusPill
+                        objectName: "statusPill"
+                        Layout.row: window.compactHeader ? 1 : 0
+                        Layout.column: window.compactHeader ? 1 : 2
+                        Layout.fillWidth: window.compactHeader
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: window.compactHeader ? 1000 : 300
+                        implicitWidth: window.compactHeader
+                                       ? 240
+                                       : Math.min(statusText.implicitWidth + 28, 300)
                         implicitHeight: 34
                         radius: 17
                         color: bridge.statusTone === "error" ? Qt.rgba(0.85, 0.15, 0.12, 0.16)
@@ -192,12 +246,18 @@ ApplicationWindow {
                              : Qt.rgba(0.20, 0.45, 0.75, 0.13)
                         Text {
                             id: statusText
-                            anchors.centerIn: parent
+                            objectName: "statusText"
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
                             text: bridge.busy ? "Processando..." : bridge.statusText
                             textFormat: Text.PlainText
                             color: window.textColor
-                            font.pixelSize: 12
+                            font.pixelSize: window.fontSmall
                             font.weight: Font.Medium
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -239,13 +299,13 @@ ApplicationWindow {
                                         Text {
                                             text: "1  Planilhas de entrada"
                                             color: window.textColor
-                                            font.pixelSize: 17
+                                            font.pixelSize: window.fontSection
                                             font.weight: Font.DemiBold
                                         }
                                         Text {
                                             text: "As acoes rapidas usam todos os itens listados."
                                             color: window.mutedColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: window.fontCaption
                                         }
                                     }
                                     Rectangle {
@@ -257,6 +317,7 @@ ApplicationWindow {
                                             anchors.centerIn: parent
                                             text: bridge.inputs.length
                                             color: window.textColor
+                                            font.pixelSize: window.fontBody
                                             font.weight: Font.DemiBold
                                         }
                                     }
@@ -295,7 +356,7 @@ ApplicationWindow {
                                                 color: window.textColor
                                                 verticalAlignment: Text.AlignVCenter
                                                 elide: Text.ElideMiddle
-                                                font.pixelSize: 13
+                                                font.pixelSize: window.fontBody
                                             }
                                             HoverHandler { id: hoverHandler }
                                         }
@@ -304,6 +365,7 @@ ApplicationWindow {
                                             visible: bridge.inputs.length === 0
                                             text: "Nenhuma planilha adicionada"
                                             color: window.mutedColor
+                                            font.pixelSize: window.fontBody
                                         }
                                     }
                                 }
@@ -352,7 +414,7 @@ ApplicationWindow {
                                 Text {
                                     text: "2  O que voce quer fazer?"
                                     color: window.textColor
-                                    font.pixelSize: 17
+                                    font.pixelSize: window.fontSection
                                     font.weight: Font.DemiBold
                                 }
                                 RowLayout {
@@ -399,7 +461,7 @@ ApplicationWindow {
                                 Text {
                                     text: "A voz somente preenche o pedido. Voce sempre revisa e executa."
                                     color: window.mutedColor
-                                    font.pixelSize: 11
+                                    font.pixelSize: window.fontCaption
                                 }
                                 GridLayout {
                                     Layout.fillWidth: true
@@ -442,7 +504,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: "3  Previa e resultado"
                                         color: window.textColor
-                                        font.pixelSize: 17
+                                        font.pixelSize: window.fontSection
                                         font.weight: Font.DemiBold
                                     }
                                     Rectangle {
@@ -456,7 +518,7 @@ ApplicationWindow {
                                             anchors.centerIn: parent
                                             text: bridge.planCount + " aguardando"
                                             color: window.textColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: window.fontCaption
                                             font.weight: Font.DemiBold
                                         }
                                     }
@@ -473,7 +535,7 @@ ApplicationWindow {
                                         wrapMode: TextEdit.Wrap
                                         selectByMouse: true
                                         color: window.textColor
-                                        font.pixelSize: 12
+                                        font.pixelSize: window.fontSmall
                                         padding: 14
                                         background: Rectangle {
                                             radius: 14
@@ -532,15 +594,20 @@ ApplicationWindow {
                         Text {
                             text: "Preferencias da automacao"
                             color: window.textColor
-                            font.pixelSize: 20
+                            font.pixelSize: window.fontDialogTitle
                             font.weight: Font.DemiBold
                         }
                         Text {
                             text: "As alteracoes sao salvas na pasta de dados do assistente."
                             color: window.mutedColor
-                            font.pixelSize: 12
+                            font.pixelSize: window.fontSmall
                         }
-                        Text { text: "Nome do candidato"; color: window.textColor; font.weight: Font.Medium }
+                        Text {
+                            text: "Nome do candidato"
+                            color: window.textColor
+                            font.pixelSize: window.fontBody
+                            font.weight: Font.Medium
+                        }
                         TextField {
                             id: candidateField
                             Layout.fillWidth: true
@@ -589,9 +656,14 @@ ApplicationWindow {
                                   ? "O Excel Desktop sera aberto em segundo plano quando necessario."
                                   : "No macOS, o resumo compativel e usado automaticamente."
                             color: window.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: window.fontCaption
                         }
-                        Text { text: "Intervalo do monitor (segundos)"; color: window.textColor; font.weight: Font.Medium }
+                        Text {
+                            text: "Intervalo do monitor (segundos)"
+                            color: window.textColor
+                            font.pixelSize: window.fontBody
+                            font.weight: Font.Medium
+                        }
                         TextField {
                             id: intervalField
                             implicitWidth: 180
@@ -640,7 +712,7 @@ ApplicationWindow {
                                 color: window.textColor
                                 wrapMode: Text.WordWrap
                                 verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 12
+                                font.pixelSize: window.fontSmall
                             }
                         }
                         Item { Layout.fillHeight: true }
@@ -685,7 +757,7 @@ ApplicationWindow {
             Text {
                 text: "Confirmar alteracoes?"
                 color: window.textColor
-                font.pixelSize: 21
+                font.pixelSize: window.fontDialogTitle
                 font.weight: Font.DemiBold
             }
             Text {
@@ -693,7 +765,7 @@ ApplicationWindow {
                 text: "Executar " + bridge.planCount + " plano(s) desta previa? Os resultados serao gravados em novas copias e os arquivos originais serao preservados."
                 color: window.mutedColor
                 wrapMode: Text.WordWrap
-                font.pixelSize: 13
+                font.pixelSize: window.fontBody
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -739,7 +811,7 @@ ApplicationWindow {
             Text {
                 text: "A automacao nao foi concluida"
                 color: window.textColor
-                font.pixelSize: 19
+                font.pixelSize: window.fontDialogTitle
                 font.weight: Font.DemiBold
             }
             Text {
@@ -748,7 +820,7 @@ ApplicationWindow {
                 textFormat: Text.PlainText
                 color: window.mutedColor
                 wrapMode: Text.WordWrap
-                font.pixelSize: 13
+                font.pixelSize: window.fontBody
             }
             RowLayout {
                 Layout.fillWidth: true

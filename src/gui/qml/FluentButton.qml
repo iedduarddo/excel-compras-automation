@@ -20,7 +20,8 @@ Button {
     contentItem: Text {
         text: control.text
         color: control.enabled ? control.textColor : Qt.rgba(0.25, 0.28, 0.34, 0.48)
-        font.pixelSize: 14
+        font.family: control.font.family
+        font.pixelSize: control.font.pixelSize
         font.weight: control.kind === "primary" ? Font.DemiBold : Font.Medium
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
