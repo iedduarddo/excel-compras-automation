@@ -6,8 +6,8 @@ Automação em Python para o **Teste Prático de Excel — Analista de Compras |
 Célula de Reservas**.
 
 O motor completo funciona no Windows e o modo compatível funciona também no
-macOS. A interface gráfica multiplataforma está em desenvolvimento com pacotes
-nativos separados. O Visual Studio Code é opcional: ele ajuda a estudar ou
+macOS. A interface gráfica multiplataforma está disponível em pacotes
+nativos separados para Windows x64, macOS Intel e macOS Apple Silicon. O Visual Studio Code é opcional: ele ajuda a estudar ou
 editar o projeto, mas não é necessário para executar a automação.
 
 O programa:
@@ -1132,7 +1132,7 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.11.0: 230 testes aprovados, sem falhas ou erros.
+Resultado esperado na release v1.12.0: 252 testes aprovados, sem falhas ou erros.
 A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
@@ -1154,8 +1154,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.11.0, os 230 testes
-alcançam cobertura total de 91,45%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.12.0, os 252 testes
+alcançam cobertura total de 90,95%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub

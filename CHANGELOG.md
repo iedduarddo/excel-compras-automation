@@ -6,6 +6,14 @@ com versionamento semântico.
 
 ## Em desenvolvimento
 
+### Planejado
+
+- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
+- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
+- avaliar assinatura e notarização dos aplicativos gráficos.
+
+## 1.12.0 - 2026-08-11
+
 ### Adicionado
 
 - interface gráfica local com importação de planilhas, pedidos escritos,
@@ -24,11 +32,13 @@ com versionamento semântico.
 - dados persistentes do aplicativo empacotado ficam em pasta gravável do
   usuário.
 
-### Planejado
+### Validado
 
-- avaliar um runner Windows próprio para testes de integração com Excel Desktop;
-- avaliar assinatura de código para reduzir avisos do Windows SmartScreen;
-- avaliar assinatura e notarização dos aplicativos gráficos.
+- 252 testes aprovados no Windows, com cobertura total de 90,95%;
+- CI aprovado em Python 3.11 e Python 3.14;
+- pacote portatil legado Windows x64 aprovado;
+- aplicativos graficos e smoke tests aprovados em Windows x64, macOS Intel
+  e macOS Apple Silicon.
 
 ## 1.11.0 - 2026-08-05
 
