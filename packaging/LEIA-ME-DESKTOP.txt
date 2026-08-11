@@ -1,0 +1,17 @@
+EXCEL COMPRAS AUTOMATION - INTERFACE GRAFICA vX.Y.Z
+==================================================
+
+1. Extraia TODO o ZIP para uma pasta gravavel.
+2. Windows: abra ExcelComprasAutomation.exe.
+3. macOS: abra Excel Compras Automation.app.
+4. Clique em Adicionar e escolha uma ou mais planilhas .xlsx ou .xlsm.
+5. Escreva o pedido ou use um dos botoes rapidos.
+6. Revise a previa. Nada e alterado antes de Confirmar plano.
+
+O original e preservado. Resultados e backups ficam na central criada pelo
+aplicativo. No Windows, voz e recursos nativos do Excel podem ser usados. No
+macOS, use o Ditado do sistema no campo Pedido; o processamento usa o modo
+compativel, sem automacao COM.
+
+Os executaveis ainda nao possuem assinatura comercial. Confirme a origem e o
+arquivo SHA-256 publicado junto do ZIP. Consulte README_DESKTOP.md.

@@ -10,7 +10,13 @@ import pytest
 from src.core.exceptions import AutomationError
 from src.services import files
 from src.services.logging_setup import configure_logging
-from src.settings import _resolve_project_root, load_aliases, load_json, load_rules
+from src.settings import (
+    _resolve_config_dir,
+    _resolve_project_root,
+    load_aliases,
+    load_json,
+    load_rules,
+)
 
 
 def configure_temporary_directories(
@@ -315,6 +321,51 @@ def test_project_root_uses_executable_directory_in_frozen_mode(
 
     assert result == executable.resolve().parent
     assert "_internal" not in result.parts
+
+
+def test_project_root_uses_package_directory_for_macos_app(tmp_path: Path) -> None:
+    executable = (
+        tmp_path
+        / "Excel Compras Automation.app"
+        / "Contents"
+        / "MacOS"
+        / "ExcelComprasAutomation"
+    )
+
+    result = _resolve_project_root(
+        frozen=True,
+        executable=executable,
+        platform_name="darwin",
+    )
+
+    assert result == tmp_path.resolve()
+
+
+def test_frozen_config_prefers_external_then_embedded_directory(tmp_path: Path) -> None:
+    project_root = tmp_path / "pacote"
+    bundle_root = tmp_path / "bundle"
+    embedded = bundle_root / "config"
+    embedded.mkdir(parents=True)
+
+    assert (
+        _resolve_config_dir(
+            project_root,
+            frozen=True,
+            bundle_root=bundle_root,
+        )
+        == embedded.resolve()
+    )
+
+    external = project_root / "config"
+    external.mkdir(parents=True)
+    assert (
+        _resolve_config_dir(
+            project_root,
+            frozen=True,
+            bundle_root=bundle_root,
+        )
+        == external
+    )
 
 
 @pytest.mark.parametrize(

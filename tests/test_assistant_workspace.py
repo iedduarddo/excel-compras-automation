@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from src.assistant.workspace import AssistantWorkspace
+from src.assistant.workspace import (
+    AssistantConfig,
+    AssistantWorkspace,
+    _default_assistant_root,
+)
 from src.core.exceptions import AutomationError
 from src.settings import PROJECT_ROOT
 
@@ -75,3 +79,35 @@ def test_workspace_loads_valid_config_and_rejects_invalid_interval(tmp_path) -> 
     )
     with pytest.raises(AutomationError, match="entre 0.5 e 60"):
         workspace.load_config()
+
+
+def test_workspace_saves_validated_config_atomically(tmp_path) -> None:
+    workspace = AssistantWorkspace(tmp_path / "assistente")
+
+    saved = workspace.save_config(AssistantConfig("  Maria Aparecida  ", False, 1.5))
+
+    assert saved == workspace.config_file
+    assert workspace.load_config() == AssistantConfig("Maria Aparecida", False, 1.5)
+    assert not tuple(workspace.root.glob("*.tmp"))
+
+    with pytest.raises(AutomationError, match="entre 0.5 e 60"):
+        workspace.save_config(AssistantConfig("Maria", True, 0.1))
+
+    with pytest.raises(AutomationError, match="candidate_name"):
+        workspace.save_config(AssistantConfig(123, True, 2))  # type: ignore[arg-type]
+    with pytest.raises(AutomationError, match="entre 0.5 e 60"):
+        workspace.save_config(AssistantConfig("Maria", True, True))
+
+
+def test_default_assistant_root_is_writable_user_location_for_frozen_macos(
+    tmp_path,
+) -> None:
+    result = _default_assistant_root(
+        platform_name="darwin",
+        frozen=True,
+        home=tmp_path,
+    )
+
+    assert result == (
+        tmp_path / "Library" / "Application Support" / "ExcelComprasAutomation"
+    )

@@ -3,16 +3,35 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from src.core.exceptions import AutomationError
 from src.services.files import SUPPORTED_EXTENSIONS
 from src.services.text import sanitize_filename
 from src.settings import PROJECT_ROOT
 
-DEFAULT_ASSISTANT_ROOT = PROJECT_ROOT / "assistente_planilhas"
+
+def _default_assistant_root(
+    *,
+    platform_name: str | None = None,
+    frozen: bool | None = None,
+    home: Path | None = None,
+) -> Path:
+    """Escolhe armazenamento gravável sem alterar o modo portátil do Windows."""
+
+    current_platform = platform_name or sys.platform
+    is_frozen = getattr(sys, "frozen", False) if frozen is None else frozen
+    if current_platform == "darwin" and is_frozen:
+        user_home = (home or Path.home()).expanduser().resolve()
+        return user_home / "Library" / "Application Support" / "ExcelComprasAutomation"
+    return PROJECT_ROOT / "assistente_planilhas"
+
+
+DEFAULT_ASSISTANT_ROOT = _default_assistant_root()
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,11 +154,56 @@ class AssistantWorkspace:
             raise AutomationError("candidate_name deve ser um texto.")
         if not isinstance(native, bool):
             raise AutomationError("use_native_pivot deve ser true ou false.")
-        if not isinstance(interval, (int, float)) or not 0.5 <= float(interval) <= 60:
+        if (
+            isinstance(interval, bool)
+            or not isinstance(interval, (int, float))
+            or not 0.5 <= float(interval) <= 60
+        ):
             raise AutomationError(
                 "poll_interval_seconds deve ser um número entre 0.5 e 60."
             )
         return AssistantConfig(candidate_name.strip(), native, float(interval))
+
+    def save_config(self, config: AssistantConfig) -> Path:
+        """Valida e grava preferências locais sem deixar JSON parcial."""
+
+        if not isinstance(config.candidate_name, str):
+            raise AutomationError("candidate_name deve ser um texto.")
+        candidate_name = config.candidate_name.strip()
+        if not isinstance(config.use_native_pivot, bool):
+            raise AutomationError("use_native_pivot deve ser true ou false.")
+        interval = config.poll_interval_seconds
+        if (
+            isinstance(interval, bool)
+            or not isinstance(interval, (int, float))
+            or not 0.5 <= float(interval) <= 60
+        ):
+            raise AutomationError(
+                "poll_interval_seconds deve ser um número entre 0.5 e 60."
+            )
+
+        self.ensure()
+        temporary = self.config_file.with_name(
+            f".{self.config_file.name}.{uuid4().hex}.tmp"
+        )
+        try:
+            temporary.write_text(
+                json.dumps(
+                    {
+                        "candidate_name": candidate_name,
+                        "use_native_pivot": config.use_native_pivot,
+                        "poll_interval_seconds": float(interval),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            temporary.replace(self.config_file)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return self.config_file
 
     def list_input_files(self) -> tuple[Path, ...]:
         self.ensure()
