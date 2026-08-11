@@ -19,6 +19,8 @@ from src import __version__
 from src.gui.bridge import DesktopBridge
 from src.gui.qt_app import qml_source_path
 
+QQuickStyle.setStyle("Basic")
+
 
 class FakeController:
     def __init__(self, root: Path) -> None:
@@ -150,7 +152,6 @@ def test_busy_state_rejects_second_operation(tmp_path) -> None:
 def test_qml_typography_and_header_respond_to_window_size(tmp_path, request) -> None:
     controller = FakeController(tmp_path)
     bridge = DesktopBridge(controller)  # type: ignore[arg-type]
-    QQuickStyle.setStyle("Basic")
     engine = QQmlApplicationEngine()
 
     def cleanup() -> None:

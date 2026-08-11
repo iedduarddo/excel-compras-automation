@@ -183,7 +183,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         Layout.preferredWidth: window.compactHeader
-                                               ? 0
+                                               ? headerLayout.width
                                                : Math.max(
                                                      160,
                                                      headerLayout.width
