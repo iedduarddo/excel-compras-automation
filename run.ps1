@@ -3,6 +3,8 @@ param(
     [string]$Arquivo = "",
     [string]$Adaptador = "",
     [switch]$Lote,
+    [Alias("Gui")]
+    [switch]$Interface,
     [switch]$Assistente,
     [string]$Comando = "",
     [string]$PastaAssistente = "",
@@ -27,6 +29,7 @@ Excel Compras Automation
 Uso:
   .\run.ps1 -NomeCompleto "NOME SOBRENOME" [-Arquivo "entrada.xlsx"]
   .\run.ps1 -Lote -NomeCompleto "NOME SOBRENOME"
+  .\run.ps1 -Interface
   .\run.ps1 -Assistente -PrepararPastas
   .\run.ps1 -Assistente -Comando 'diagnosticar todas'
   .\run.ps1 -Assistente -Voz
@@ -41,6 +44,7 @@ Opcoes:
   -Arquivo            Caminho opcional da planilha. Quando omitido, a aplicacao
                       usa a unica planilha existente na pasta input.
   -Lote               Processa todas as planilhas validas da pasta input.
+  -Interface, -Gui    Abre a interface grafica local da automacao.
   -Adaptador          Perfil JSON opcional com aliases especificos da origem.
   -Assistente         Usa a pasta monitorada e a fila de comandos escritos.
   -Comando            Executa um comando conhecido diretamente.
@@ -96,6 +100,21 @@ if ($Lote -and ($Diagnostico -or $Version)) {
     throw "Use apenas um modo por vez: -Lote, -Diagnostico ou -Version."
 }
 
+if (
+    $Interface -and
+    (
+        $Assistente -or $Lote -or $Diagnostico -or $Version -or
+        -not [string]::IsNullOrWhiteSpace($NomeCompleto) -or
+        -not [string]::IsNullOrWhiteSpace($Arquivo) -or
+        -not [string]::IsNullOrWhiteSpace($Adaptador) -or
+        -not [string]::IsNullOrWhiteSpace($Comando) -or
+        $Voz -or $Monitorar -or $PrepararPastas -or
+        $SemPivotNativo -or $Verbose
+    )
+) {
+    throw "A interface possui seus proprios controles; nao combine -Interface com outro modo."
+}
+
 if ($Lote -and -not [string]::IsNullOrWhiteSpace($Arquivo)) {
     throw "Nao combine -Lote com -Arquivo. O lote usa a pasta input."
 }
@@ -106,7 +125,8 @@ if (
         -not [string]::IsNullOrWhiteSpace($PastaAssistente) -or
         $Voz -or $Monitorar -or $PrepararPastas
     ) -and
-    -not $Assistente
+    -not $Assistente -and
+    -not ($Interface -and -not [string]::IsNullOrWhiteSpace($PastaAssistente))
 ) {
     throw "Use -Assistente junto de -Comando, -Voz, -Monitorar ou -PrepararPastas."
 }
@@ -153,6 +173,13 @@ if (-not $UsePortableExecutable) {
 
 if ($Version) {
     $ApplicationArguments += "--version"
+}
+elseif ($Interface) {
+    $ApplicationArguments += "--interface"
+
+    if (-not [string]::IsNullOrWhiteSpace($PastaAssistente)) {
+        $ApplicationArguments += @("--pasta-assistente", $PastaAssistente)
+    }
 }
 else {
     if ($Assistente) {

@@ -5,12 +5,24 @@ from __future__ import annotations
 import base64
 import json
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
 import src.assistant.voice as voice_module
 from src.assistant.voice import VoiceRecognition, recognize_voice
 from src.core.exceptions import AutomationError
+
+
+@pytest.fixture(autouse=True)
+def emulate_windows_voice_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        voice_module,
+        "os",
+        SimpleNamespace(name="nt"),
+    )
 
 
 def encoded_result(
@@ -142,7 +154,11 @@ def test_recognize_voice_reports_confirmation_timeout(
 
 
 def test_recognize_voice_requires_windows(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(voice_module.os, "name", "posix")
+    monkeypatch.setattr(
+        voice_module,
+        "os",
+        SimpleNamespace(name="posix"),
+    )
 
     with pytest.raises(AutomationError, match="somente no Windows"):
         recognize_voice()

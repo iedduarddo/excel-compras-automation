@@ -5,10 +5,10 @@
 Automação em Python para o **Teste Prático de Excel — Analista de Compras |
 Célula de Reservas**.
 
-Este projeto foi preparado para Windows 11 e para uma pessoa que nunca utilizou
-Python. O Visual Studio Code é opcional: ele ajuda a estudar ou editar o projeto,
-mas não é necessário para executar a automação. Não é preciso entender todo o
-código antes da primeira execução.
+O motor completo funciona no Windows e o modo compatível funciona também no
+macOS. A interface gráfica multiplataforma está disponível em pacotes
+nativos separados para Windows x64, macOS Intel e macOS Apple Silicon. O Visual Studio Code é opcional: ele ajuda a estudar ou
+editar o projeto, mas não é necessário para executar a automação.
 
 O programa:
 
@@ -37,6 +37,29 @@ O arquivo da pasta `input` não é alterado.
 ---
 
 # Início rápido
+
+## Interface gráfica
+
+No código-fonte, abra a nova interface com:
+
+```powershell
+.\run.ps1 -Interface
+```
+
+Ou, em Windows e macOS:
+
+```text
+python -m src.main --interface
+```
+
+Use **Adicionar** para copiar planilhas para a central, escreva o pedido ou
+escolha um botão rápido e revise a prévia. Uma transformação só é aplicada
+depois do clique em **Confirmar plano**; o original permanece intacto.
+
+O build gera artefatos diferentes para Windows x64, macOS Intel e macOS Apple
+Silicon. O Windows oferece voz integrada e automação do Excel Desktop. No macOS,
+use o Ditado do sistema no campo de pedido e o resumo compatível por fórmulas.
+Consulte [docs/INTERFACE_GRAFICA.md](docs/INTERFACE_GRAFICA.md).
 
 ## Pacote portátil para Windows x64
 
@@ -1109,7 +1132,7 @@ Execute:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado esperado na release v1.11.0: 230 testes aprovados, sem falhas ou erros.
+Resultado esperado na release v1.12.0: 252 testes aprovados, sem falhas ou erros.
 A release v1.7.0 permanece registrada no `CHANGELOG.md` com os 162 testes
 validados naquela entrega.
 
@@ -1131,8 +1154,8 @@ Meça a cobertura:
 .\.venv\Scripts\python.exe -m pytest --cov=src --cov-report=term-missing -q
 ```
 
-O projeto exige cobertura mínima de 90%. Na release v1.11.0, os 230 testes
-alcançam cobertura total de 91,45%, com medição de branches habilitada. O comando
+O projeto exige cobertura mínima de 90%. Na release v1.12.0, os 252 testes
+alcançam cobertura total de 90,95%, com medição de branches habilitada. O comando
 falhará se uma mudança reduzir a cobertura para menos de 90%.
 
 ## Integração contínua no GitHub

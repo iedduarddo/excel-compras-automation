@@ -90,6 +90,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Usa a pasta monitorada e a fila de comandos escritos.",
     )
     parser.add_argument(
+        "--interface",
+        "--gui",
+        dest="gui",
+        action="store_true",
+        help="Abre a interface gráfica local da automação.",
+    )
+    parser.add_argument(
         "--comando",
         "--command",
         dest="command",
@@ -133,14 +140,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.batch and args.diagnostic:
         parser.error("Use apenas um modo por vez: --lote ou --diagnostico.")
     assistant_options = (
-        args.command
-        or args.watch
-        or args.voice
-        or args.prepare_assistant
-        or args.assistant_root
+        args.command or args.watch or args.voice or args.prepare_assistant
     )
     if assistant_options and not args.assistant:
         parser.error("Use --assistente junto das opções de comando ou monitoramento.")
+    if args.assistant_root and not (args.assistant or args.gui):
+        parser.error("Use --pasta-assistente com --assistente ou --interface.")
     assistant_actions = sum(
         bool(option)
         for option in (args.command, args.watch, args.voice, args.prepare_assistant)
@@ -160,8 +165,27 @@ def main(argv: list[str] | None = None) -> int:
             "O assistente recebe opções pelo comando ou config.json; não combine "
             "com os parâmetros do modo tradicional."
         )
+    if args.gui and (
+        args.assistant
+        or args.input
+        or args.batch
+        or args.diagnostic
+        or args.candidate_name
+        or args.adapter
+        or args.sem_pivot_nativo
+        or args.verbose
+        or assistant_options
+    ):
+        parser.error(
+            "A interface possui seus próprios controles; não combine --interface "
+            "com outro modo."
+        )
 
     try:
+        if args.gui:
+            from src.gui.app import run_desktop_app
+
+            return run_desktop_app(args.assistant_root)
         if args.assistant:
             workspace = (
                 AssistantWorkspace(args.assistant_root)
