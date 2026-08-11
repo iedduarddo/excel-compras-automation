@@ -14,6 +14,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtQuickControls2 import QQuickStyle
+from PySide6.QtTest import QTest
 
 from src import __version__
 from src.gui.bridge import DesktopBridge
@@ -155,6 +156,9 @@ def test_qml_typography_and_header_respond_to_window_size(tmp_path, request) -> 
     engine = QQmlApplicationEngine()
 
     def cleanup() -> None:
+        for root in engine.rootObjects():
+            root.hide()
+        QGuiApplication.processEvents()
         engine.deleteLater()
         QCoreApplication.sendPostedEvents(engine, QEvent.Type.DeferredDelete)
         QGuiApplication.processEvents()
@@ -169,6 +173,10 @@ def test_qml_typography_and_header_respond_to_window_size(tmp_path, request) -> 
     roots = engine.rootObjects()
     assert len(roots) == 1
     window = roots[0]
+    window.show()
+    QGuiApplication.processEvents()
+    QTest.qWait(20)
+    QGuiApplication.processEvents()
     title = window.findChild(QQuickItem, "headerTitle")
     theme_button = window.findChild(QQuickItem, "themeToggleButton")
     header = window.findChild(QQuickItem, "headerCard")
@@ -182,6 +190,7 @@ def test_qml_typography_and_header_respond_to_window_size(tmp_path, request) -> 
     for width, height in ((940, 660), (1280, 820), (1600, 1000)):
         window.resize(QSize(width, height))
         QGuiApplication.processEvents()
+        QTest.qWait(20)
         QGuiApplication.processEvents()
         assert window.property("width") == width
         assert window.property("height") == height
