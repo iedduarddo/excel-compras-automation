@@ -42,7 +42,7 @@ line-ending = "auto"
 [tool.coverage.run]
 branch = true
 source = ["src"]
-omit = ["src/gui/app.py"]
+omit = ["src/gui/app.py", "src/gui/bridge.py", "src/gui/qt_app.py"]
 
 [tool.coverage.report]
 show_missing = true

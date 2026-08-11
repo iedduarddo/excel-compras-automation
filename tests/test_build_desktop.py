@@ -49,6 +49,8 @@ def test_desktop_spec_is_windowed_and_platform_aware() -> None:
     assert 'sys.platform == "darwin"' in spec
     assert "BUNDLE(" in spec
     assert '"config"' in spec
+    assert "src/gui/qml" in spec
+    assert "PySide6.QtQml" in spec
 
 
 def test_desktop_workflow_builds_three_native_artifacts() -> None:
@@ -64,7 +66,8 @@ def test_desktop_workflow_builds_three_native_artifacts() -> None:
         "macos-intel",
         "macos-apple-silicon",
         "scripts/build_desktop.py",
-        "import tkinter",
+        "requirements-desktop-build.txt",
+        "from PySide6 import QtCore",
     ):
         assert token in workflow
 
@@ -88,3 +91,24 @@ def test_release_workflow_promotes_all_desktop_artifacts() -> None:
 def test_desktop_smoke_entrypoint_uses_no_window() -> None:
     assert desktop.main(["--smoke-test"]) == 0
     assert desktop.main(["--unknown"]) == 2
+
+
+def test_packaged_smoke_requires_qt() -> None:
+    build_source = (PROJECT_ROOT / "scripts" / "build_desktop.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert '"--smoke-test-qt"' in build_source
+
+
+def test_qml_theme_toggle_is_persistent() -> None:
+    qml = (PROJECT_ROOT / "src" / "gui" / "qml" / "Main.qml").read_text(
+        encoding="utf-8"
+    )
+    bootstrap = (PROJECT_ROOT / "src" / "gui" / "qt_app.py").read_text(encoding="utf-8")
+
+    assert 'objectName: "themeToggleButton"' in qml
+    assert "window.darkMode = !window.darkMode" in qml
+    assert "initialDarkMode" in qml
+    assert "QSettings" in bootstrap
+    assert '"appearance/darkMode"' in bootstrap

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import queue
 import sys
 from collections.abc import Callable
@@ -9,6 +10,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import TypeVar
 
+from src import __version__
 from src.assistant.service import AssistantResult, format_assistant_result
 from src.core.exceptions import AutomationError
 from src.gui.controller import DesktopController
@@ -16,8 +18,56 @@ from src.gui.controller import DesktopController
 _T = TypeVar("_T")
 
 
+def calculate_window_geometry(screen_width: int, screen_height: int) -> str:
+    """Calcula uma janela centralizada que tambem cabe em telas menores."""
+
+    available_width = max(760, screen_width - 64)
+    available_height = max(560, screen_height - 112)
+    width = min(1180, available_width)
+    height = min(780, available_height)
+    left = max((screen_width - width) // 2, 0)
+    top = max((screen_height - height) // 2, 0)
+    return f"{width}x{height}+{left}+{top}"
+
+
+def platform_description(platform_name: str) -> str:
+    """Retorna um nome curto e compreensivel para a plataforma atual."""
+
+    if platform_name == "win32":
+        return "Windows"
+    if platform_name == "darwin":
+        return "macOS"
+    return "Desktop"
+
+
 def run_desktop_app(root: Path | None = None) -> int:
-    """Abre a janela somente quando o modo gráfico é solicitado."""
+    """Prefere Qt Quick e conserva Tk como fallback explicito."""
+
+    mode = os.environ.get("EXCEL_COMPRAS_UI", "auto").strip().casefold()
+    if mode == "tk":
+        return run_tk_desktop_app(root)
+    if mode not in {"auto", "qt"}:
+        print("EXCEL_COMPRAS_UI deve ser auto, qt ou tk.", file=sys.stderr)
+        return 2
+    try:
+        from src.gui.qt_app import run_qt_desktop_app
+
+        return run_qt_desktop_app(root)
+    except ModuleNotFoundError as error:
+        missing = error.name and error.name.split(".", maxsplit=1)[0] == "PySide6"
+        if not missing:
+            raise
+        if mode == "qt":
+            print(
+                "PySide6 nao esta instalado. Use requirements-desktop-build.txt.",
+                file=sys.stderr,
+            )
+            return 1
+        return run_tk_desktop_app(root)
+
+
+def run_tk_desktop_app(root: Path | None = None) -> int:
+    """Abre a janela somente quando o modo grafico e solicitado."""
 
     import tkinter as tk
     from tkinter import messagebox
@@ -25,7 +75,7 @@ def run_desktop_app(root: Path | None = None) -> int:
     try:
         root_window = tk.Tk()
     except tk.TclError as error:
-        print(f"Não foi possível abrir a interface gráfica: {error}", file=sys.stderr)
+        print(f"Nao foi possivel abrir a interface grafica: {error}", file=sys.stderr)
         return 1
     try:
         controller = DesktopController(root)
@@ -39,7 +89,7 @@ def run_desktop_app(root: Path | None = None) -> int:
 
 
 class DesktopApp:
-    """Interface orientada a tarefas, com execução em segundo plano."""
+    """Interface orientada a tarefas, com execucao em segundo plano."""
 
     def __init__(self, root: object, controller: DesktopController) -> None:
         import tkinter as tk
@@ -57,152 +107,542 @@ class DesktopApp:
         ] = queue.SimpleQueue()
         self.current_plan_ids: tuple[str, ...] = ()
         self.monitoring = False
+        self.monitor_after_id: str | None = None
         self.busy = False
+        self.general_buttons: list[object] = []
 
-        self.root.title("Excel Compras Automation")
-        initial_width = min(1080, self.root.winfo_screenwidth() - 40)
-        initial_height = min(720, self.root.winfo_screenheight() - 90)
-        self.root.geometry(f"{initial_width}x{initial_height}")
-        self.root.minsize(900, 620)
+        self.root.title(f"Excel Compras Automation {__version__}")
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        self.root.geometry(calculate_window_geometry(screen_width, screen_height))
+        self.root.minsize(min(880, screen_width - 32), min(620, screen_height - 72))
         self.root.protocol("WM_DELETE_WINDOW", self._close)
 
-        self.status = tk.StringVar(value="Pronto")
+        self.status = tk.StringVar(value="Pronto para começar")
+        self.input_summary = tk.StringVar(value="Nenhuma planilha adicionada")
+        self.plan_summary = tk.StringVar(value="Nenhum plano aguardando")
         self.command = tk.StringVar(value="reconhecer todas")
         self.candidate_name = tk.StringVar()
         self.native_pivot = tk.BooleanVar(value=True)
         self.poll_interval = tk.StringVar(value="2")
+
+        self._configure_styles()
         self._build()
         self._load_settings()
         self.refresh_inputs()
         self.root.after(100, self._poll_completed)
+        self.root.after(150, self.command_entry.focus_set)
+
+    def _configure_styles(self) -> None:
+        from tkinter import font, ttk
+
+        style = ttk.Style(self.root)
+        default_font = font.nametofont("TkDefaultFont").copy()
+        default_font.configure(size=10)
+        heading_font = font.nametofont("TkHeadingFont").copy()
+        heading_font.configure(size=11, weight="bold")
+        title_font = font.nametofont("TkHeadingFont").copy()
+        title_font.configure(size=20, weight="bold")
+        subtitle_font = font.nametofont("TkDefaultFont").copy()
+        subtitle_font.configure(size=10)
+        action_font = font.nametofont("TkDefaultFont").copy()
+        action_font.configure(weight="bold")
+
+        style.configure(".", font=default_font)
+        style.configure("Title.TLabel", font=title_font)
+        style.configure("Subtitle.TLabel", font=subtitle_font)
+        style.configure("Section.TLabel", font=heading_font)
+        style.configure("Step.TLabel", font=heading_font, padding=(8, 3))
+        style.configure("Card.TLabelframe", padding=14)
+        style.configure("Card.TLabelframe.Label", font=heading_font)
+        style.configure("Primary.TButton", font=action_font, padding=(16, 9))
+        style.configure("Action.TButton", padding=(12, 8))
+        style.configure("Quiet.TButton", padding=(10, 7))
+        style.configure("Plan.TButton", font=action_font, padding=(14, 8))
+        style.configure("Modern.TEntry", padding=7)
+        style.configure("Modern.TNotebook", tabmargins=(0, 8, 0, 0))
+        style.configure("Modern.TNotebook.Tab", padding=(18, 9))
+        style.configure("Status.TLabel", padding=(2, 5))
+        style.configure("StatusSuccess.TLabel", padding=(2, 5))
+        style.configure("StatusWarning.TLabel", padding=(2, 5))
+        style.configure("StatusError.TLabel", padding=(2, 5))
 
     def _build(self) -> None:
         from tkinter import ttk
 
-        container = ttk.Frame(self.root, padding=14)
-        container.pack(fill="both", expand=True)
-        container.columnconfigure(0, weight=2)
-        container.columnconfigure(1, weight=3)
-        container.rowconfigure(1, weight=1)
+        shell = ttk.Frame(self.root, padding=(20, 16, 20, 14))
+        shell.pack(fill="both", expand=True)
+        shell.columnconfigure(0, weight=1)
+        shell.rowconfigure(1, weight=1)
 
-        title = ttk.Label(
-            container,
+        self._build_header(shell)
+
+        self.notebook = ttk.Notebook(shell, style="Modern.TNotebook")
+        self.notebook.grid(row=1, column=0, sticky="nsew")
+        assistant_tab = ttk.Frame(self.notebook, padding=(0, 14, 0, 0))
+        settings_tab = ttk.Frame(self.notebook, padding=18)
+        self.notebook.add(assistant_tab, text="Assistente")
+        self.notebook.add(settings_tab, text="Configurações")
+
+        self._build_assistant_tab(assistant_tab)
+        self._build_settings_tab(settings_tab)
+        self._build_status_bar(shell)
+        self._bind_shortcuts()
+
+    def _build_header(self, parent: object) -> None:
+        from tkinter import ttk
+
+        header = ttk.Frame(parent)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
+        ttk.Label(
+            header,
             text="Excel Compras Automation",
-            font=("Segoe UI", 18, "bold"),
-        )
-        title.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+            style="Title.TLabel",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            header,
+            text="Importe, descreva e confirme antes de gerar novas cópias.",
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(3, 0))
 
-        files = ttk.LabelFrame(container, text="1. Planilhas de entrada", padding=10)
-        files.grid(row=1, column=0, sticky="nsew", padx=(0, 8))
-        files.rowconfigure(0, weight=1)
+        environment = ttk.Frame(header)
+        environment.grid(row=0, column=1, rowspan=2, sticky="e")
+        ttk.Label(
+            environment,
+            text=f"v{__version__}",
+            style="Section.TLabel",
+        ).grid(row=0, column=0, sticky="e")
+        ttk.Label(
+            environment,
+            text=(
+                f"{platform_description(self.controller.capabilities.platform)} · "
+                "modo seguro"
+            ),
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, sticky="e", pady=(3, 0))
+
+    def _build_assistant_tab(self, parent: object) -> None:
+        from tkinter import ttk
+
+        parent.columnconfigure(0, weight=2)
+        parent.columnconfigure(1, weight=3)
+        parent.rowconfigure(0, weight=1)
+
+        self._build_inputs_panel(parent)
+        workspace = ttk.Frame(parent)
+        workspace.grid(row=0, column=1, sticky="nsew", padx=(14, 0))
+        workspace.columnconfigure(0, weight=1)
+        workspace.rowconfigure(1, weight=1)
+        self._build_request_panel(workspace)
+        self._build_preview_panel(workspace)
+
+    def _build_inputs_panel(self, parent: object) -> None:
+        from tkinter import ttk
+
+        files = ttk.LabelFrame(
+            parent,
+            text="1. Planilhas de entrada",
+            style="Card.TLabelframe",
+        )
+        files.grid(row=0, column=0, sticky="nsew")
         files.columnconfigure(0, weight=1)
-        self.input_list = self.tk.Listbox(files, exportselection=False)
-        self.input_list.grid(row=0, column=0, columnspan=3, sticky="nsew")
-        ttk.Button(files, text="Adicionar", command=self.import_files).grid(
-            row=1, column=0, sticky="ew", pady=(8, 0)
-        )
-        ttk.Button(files, text="Atualizar", command=self.refresh_inputs).grid(
-            row=1, column=1, sticky="ew", padx=6, pady=(8, 0)
-        )
-        ttk.Button(
+        files.rowconfigure(2, weight=1)
+
+        ttk.Label(
             files,
+            text="Adicione arquivos .xlsx ou .xlsm para começar.",
+            style="Subtitle.TLabel",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(files, textvariable=self.input_summary).grid(
+            row=1, column=0, sticky="w", pady=(5, 10)
+        )
+
+        list_area = ttk.Frame(files)
+        list_area.grid(row=2, column=0, sticky="nsew")
+        list_area.columnconfigure(0, weight=1)
+        list_area.rowconfigure(0, weight=1)
+        self.input_list = self.tk.Listbox(
+            list_area,
+            exportselection=False,
+            activestyle="none",
+            relief="solid",
+            borderwidth=1,
+            highlightthickness=0,
+            selectmode="browse",
+        )
+        self.input_list.grid(row=0, column=0, sticky="nsew")
+        input_scroll = ttk.Scrollbar(
+            list_area,
+            orient="vertical",
+            command=self.input_list.yview,
+        )
+        input_scroll.grid(row=0, column=1, sticky="ns")
+        self.input_list.configure(yscrollcommand=input_scroll.set)
+
+        self.import_button = self._track_button(
+            ttk.Button(
+                files,
+                text="Adicionar planilhas",
+                command=self.import_files,
+                style="Primary.TButton",
+            )
+        )
+        self.import_button.grid(row=3, column=0, sticky="ew", pady=(12, 7))
+
+        file_actions = ttk.Frame(files)
+        file_actions.grid(row=4, column=0, sticky="ew")
+        file_actions.columnconfigure(0, weight=1)
+        file_actions.columnconfigure(1, weight=1)
+        refresh_button = self._track_button(
+            ttk.Button(
+                file_actions,
+                text="Atualizar lista",
+                command=self.refresh_inputs,
+                style="Quiet.TButton",
+            )
+        )
+        refresh_button.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        ttk.Button(
+            file_actions,
             text="Abrir pasta",
             command=lambda: self.controller.open_directory(
                 self.controller.workspace.input_dir
             ),
-        ).grid(row=1, column=2, sticky="ew", pady=(8, 0))
+            style="Quiet.TButton",
+        ).grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
-        right = ttk.Frame(container)
-        right.grid(row=1, column=1, sticky="nsew", padx=(8, 0))
-        right.columnconfigure(0, weight=1)
-        right.rowconfigure(1, weight=1)
+        ttk.Label(
+            files,
+            text="As ações rápidas usam todas as planilhas desta lista.",
+            style="Subtitle.TLabel",
+            wraplength=300,
+        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
 
-        request = ttk.LabelFrame(right, text="2. Pedido", padding=10)
+    def _build_request_panel(self, parent: object) -> None:
+        from tkinter import ttk
+
+        request = ttk.LabelFrame(
+            parent,
+            text="2. Descreva o pedido",
+            style="Card.TLabelframe",
+        )
         request.grid(row=0, column=0, sticky="ew")
         request.columnconfigure(0, weight=1)
-        ttk.Entry(request, textvariable=self.command).grid(
-            row=0, column=0, columnspan=4, sticky="ew"
+
+        ttk.Label(
+            request,
+            text=(
+                "Use linguagem natural ou escolha uma ação rápida. "
+                "Nenhuma alteração ocorre sem prévia."
+            ),
+            style="Subtitle.TLabel",
+            wraplength=680,
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+
+        command_row = ttk.Frame(request)
+        command_row.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        command_row.columnconfigure(0, weight=1)
+        self.command_entry = ttk.Entry(
+            command_row,
+            textvariable=self.command,
+            style="Modern.TEntry",
         )
-        ttk.Button(request, text="Executar", command=self.execute_command).grid(
-            row=1, column=0, sticky="ew", pady=(8, 0)
+        self.command_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.execute_button = self._track_button(
+            ttk.Button(
+                command_row,
+                text="Executar pedido",
+                command=self.execute_command,
+                style="Primary.TButton",
+            )
         )
-        self.voice_button = ttk.Button(request, text="Voz", command=self.capture_voice)
-        self.voice_button.grid(row=1, column=1, sticky="ew", padx=6, pady=(8, 0))
+        self.execute_button.grid(row=0, column=1, sticky="ew")
+        self.voice_button = self._track_button(
+            ttk.Button(
+                command_row,
+                text="Usar voz",
+                command=self.capture_voice,
+                style="Action.TButton",
+            )
+        )
+        self.voice_button.grid(row=0, column=2, sticky="ew", padx=(8, 0))
         if not self.controller.capabilities.voice_available:
             self.voice_button.state(["disabled"])
-        ttk.Button(
-            request,
-            text="Reconhecer",
-            command=lambda: self._set_and_execute("reconhecer todas"),
-        ).grid(row=1, column=2, sticky="ew", pady=(8, 0))
-        ttk.Button(
-            request,
-            text="Diagnosticar",
-            command=lambda: self._set_and_execute("diagnosticar todas"),
-        ).grid(row=1, column=3, sticky="ew", padx=(6, 0), pady=(8, 0))
-        ttk.Button(
-            request,
-            text="Limpar e organizar",
-            command=lambda: self._set_and_execute("limpar e organizar todas"),
-        ).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        ttk.Button(
-            request,
-            text="Criar relatório",
-            command=lambda: self._set_and_execute("resumir e criar relatorio de todas"),
-        ).grid(row=2, column=2, columnspan=2, sticky="ew", padx=(6, 0), pady=(6, 0))
 
-        preview = ttk.LabelFrame(right, text="3. Prévia e resultado", padding=10)
-        preview.grid(row=1, column=0, sticky="nsew", pady=(12, 0))
-        preview.rowconfigure(0, weight=1)
+        ttk.Label(request, text="Ações rápidas", style="Section.TLabel").grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(13, 6)
+        )
+        quick_actions = ttk.Frame(request)
+        quick_actions.grid(row=3, column=0, columnspan=2, sticky="ew")
+        for column in range(4):
+            quick_actions.columnconfigure(column, weight=1)
+        actions = (
+            ("Reconhecer", "reconhecer todas"),
+            ("Diagnosticar", "diagnosticar todas"),
+            ("Limpar e organizar", "limpar e organizar todas"),
+            ("Criar relatório", "resumir e criar relatorio de todas"),
+        )
+        for column, (label, command) in enumerate(actions):
+            button = self._track_button(
+                ttk.Button(
+                    quick_actions,
+                    text=label,
+                    command=lambda value=command: self._set_and_execute(value),
+                    style="Quiet.TButton",
+                )
+            )
+            padding = (0 if column == 0 else 4, 0 if column == 3 else 4)
+            button.grid(row=0, column=column, sticky="ew", padx=padding)
+
+    def _build_preview_panel(self, parent: object) -> None:
+        from tkinter import ttk
+
+        preview = ttk.LabelFrame(
+            parent,
+            text="3. Revise a prévia",
+            style="Card.TLabelframe",
+        )
+        preview.grid(row=1, column=0, sticky="nsew", pady=(14, 0))
         preview.columnconfigure(0, weight=1)
-        self.preview = self.tk.Text(preview, wrap="word", state="disabled")
-        self.preview.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        preview.rowconfigure(1, weight=1)
+
+        preview_header = ttk.Frame(preview)
+        preview_header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        preview_header.columnconfigure(0, weight=1)
+        ttk.Label(
+            preview_header,
+            text="Confira o arquivo, as ações e os avisos antes de confirmar.",
+            style="Subtitle.TLabel",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            preview_header,
+            textvariable=self.plan_summary,
+            style="Section.TLabel",
+        ).grid(row=0, column=1, sticky="e")
+
+        preview_area = ttk.Frame(preview)
+        preview_area.grid(row=1, column=0, sticky="nsew")
+        preview_area.columnconfigure(0, weight=1)
+        preview_area.rowconfigure(0, weight=1)
+        self.preview = self.tk.Text(
+            preview_area,
+            wrap="word",
+            state="disabled",
+            relief="solid",
+            borderwidth=1,
+            highlightthickness=0,
+            padx=12,
+            pady=10,
+        )
+        self.preview.grid(row=0, column=0, sticky="nsew")
+        preview_scroll = ttk.Scrollbar(
+            preview_area,
+            orient="vertical",
+            command=self.preview.yview,
+        )
+        preview_scroll.grid(row=0, column=1, sticky="ns")
+        self.preview.configure(yscrollcommand=preview_scroll.set)
+
+        preview_actions = ttk.Frame(preview)
+        preview_actions.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        preview_actions.columnconfigure(0, weight=1)
+        preview_actions.columnconfigure(1, weight=1)
+        preview_actions.columnconfigure(2, weight=1)
         self.confirm_button = ttk.Button(
-            preview, text="Confirmar plano", command=self.confirm_plan
+            preview_actions,
+            text="Confirmar plano",
+            command=self.confirm_plan,
+            style="Plan.TButton",
         )
-        self.confirm_button.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        self.confirm_button.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         self.cancel_button = ttk.Button(
-            preview, text="Cancelar plano", command=self.cancel_plan
+            preview_actions,
+            text="Cancelar plano",
+            command=self.cancel_plan,
+            style="Action.TButton",
         )
-        self.cancel_button.grid(row=1, column=1, sticky="ew", padx=6, pady=(8, 0))
+        self.cancel_button.grid(row=0, column=1, sticky="ew", padx=4)
         ttk.Button(
-            preview,
+            preview_actions,
             text="Abrir saída",
             command=lambda: self.controller.open_directory(
                 self.controller.workspace.output_dir
             ),
-        ).grid(row=1, column=2, sticky="ew", pady=(8, 0))
+            style="Action.TButton",
+        ).grid(row=0, column=2, sticky="ew", padx=(4, 0))
+
+        self._set_preview(
+            "A prévia detalhada ou o resultado do diagnóstico aparecerá aqui."
+        )
         self._toggle_plan_buttons(False)
 
-        settings = ttk.LabelFrame(container, text="Configurações", padding=10)
-        settings.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+    def _build_settings_tab(self, parent: object) -> None:
+        from tkinter import ttk
+
+        parent.columnconfigure(0, weight=1)
+        ttk.Label(parent, text="Configurações", style="Title.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(
+            parent,
+            text="Preferências salvas para as próximas execuções.",
+            style="Subtitle.TLabel",
+        ).grid(row=1, column=0, sticky="w", pady=(3, 16))
+
+        settings = ttk.LabelFrame(
+            parent,
+            text="Preferências do assistente",
+            style="Card.TLabelframe",
+        )
+        settings.grid(row=2, column=0, sticky="new")
         settings.columnconfigure(1, weight=1)
-        ttk.Label(settings, text="Nome:").grid(row=0, column=0, sticky="w")
-        ttk.Entry(settings, textvariable=self.candidate_name).grid(
-            row=0, column=1, sticky="ew", padx=6
+
+        ttk.Label(settings, text="Nome usado nos arquivos de saída").grid(
+            row=0, column=0, sticky="w"
         )
+        ttk.Entry(
+            settings,
+            textvariable=self.candidate_name,
+            style="Modern.TEntry",
+        ).grid(row=0, column=1, sticky="ew", padx=(14, 0))
+
         self.native_pivot_check = ttk.Checkbutton(
-            settings, text="Usar Excel Desktop no Windows", variable=self.native_pivot
+            settings,
+            text="Usar Excel Desktop para criar Tabela Dinâmica nativa",
+            variable=self.native_pivot,
         )
-        self.native_pivot_check.grid(row=0, column=2, sticky="w")
+        self.native_pivot_check.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(16, 0),
+        )
+        native_hint = (
+            "Disponível neste Windows."
+            if self.controller.capabilities.native_excel_available
+            else "Indisponível nesta plataforma; será usado o modo compatível."
+        )
+        ttk.Label(
+            settings,
+            text=native_hint,
+            style="Subtitle.TLabel",
+        ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(3, 0))
         if not self.controller.capabilities.native_excel_available:
             self.native_pivot.set(False)
             self.native_pivot_check.state(["disabled"])
-        ttk.Label(settings, text="Monitor (s):").grid(row=0, column=3, padx=(12, 0))
-        ttk.Entry(settings, textvariable=self.poll_interval, width=6).grid(
-            row=0, column=4
-        )
-        ttk.Button(settings, text="Salvar", command=self.save_settings).grid(
-            row=0, column=5, padx=(8, 0)
-        )
-        self.monitor_button = ttk.Button(
-            settings, text="Iniciar monitor", command=self.toggle_monitor
-        )
-        self.monitor_button.grid(row=0, column=6, padx=(8, 0))
 
-        ttk.Label(container, textvariable=self.status, anchor="w").grid(
-            row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0)
+        monitor_row = ttk.Frame(settings)
+        monitor_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(18, 0))
+        monitor_row.columnconfigure(1, weight=1)
+        ttk.Label(monitor_row, text="Atualizar lista a cada").grid(
+            row=0, column=0, sticky="w"
         )
+        self.poll_spinbox = ttk.Spinbox(
+            monitor_row,
+            from_=0.5,
+            to=60,
+            increment=0.5,
+            textvariable=self.poll_interval,
+            width=8,
+        )
+        self.poll_spinbox.grid(row=0, column=1, sticky="w", padx=(8, 4))
+        ttk.Label(monitor_row, text="segundos").grid(row=0, column=2, sticky="w")
+
+        settings_actions = ttk.Frame(settings)
+        settings_actions.grid(
+            row=4,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(20, 0),
+        )
+        settings_actions.columnconfigure(0, weight=1)
+        settings_actions.columnconfigure(1, weight=1)
+        save_button = self._track_button(
+            ttk.Button(
+                settings_actions,
+                text="Salvar configurações",
+                command=self.save_settings,
+                style="Primary.TButton",
+            )
+        )
+        save_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        self.monitor_button = self._track_button(
+            ttk.Button(
+                settings_actions,
+                text="Iniciar monitor",
+                command=self.toggle_monitor,
+                style="Action.TButton",
+            )
+        )
+        self.monitor_button.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+        ttk.Label(
+            parent,
+            text=(
+                "O monitor apenas atualiza a lista de planilhas. "
+                "Ele nunca confirma nem executa alterações silenciosamente."
+            ),
+            style="Subtitle.TLabel",
+            wraplength=700,
+        ).grid(row=3, column=0, sticky="w", pady=(14, 0))
+
+    def _build_status_bar(self, parent: object) -> None:
+        from tkinter import ttk
+
+        status_bar = ttk.Frame(parent)
+        status_bar.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+        status_bar.columnconfigure(0, weight=1)
+        self.status_label = ttk.Label(
+            status_bar,
+            textvariable=self.status,
+            style="Status.TLabel",
+        )
+        self.status_label.grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            status_bar,
+            text="Ctrl/Cmd+O: adicionar · F5: atualizar · Ctrl/Cmd+Enter: executar",
+            style="Subtitle.TLabel",
+        ).grid(row=0, column=1, sticky="e", padx=(12, 12))
+        self.progress = ttk.Progressbar(
+            status_bar,
+            mode="indeterminate",
+            length=120,
+        )
+        self.progress.grid(row=0, column=2, sticky="e")
+
+    def _bind_shortcuts(self) -> None:
+        self.command_entry.bind("<Return>", self._execute_from_event)
+        self.root.bind("<Control-Return>", self._execute_from_event)
+        self.root.bind("<Command-Return>", self._execute_from_event)
+        self.root.bind("<Control-o>", self._import_from_event)
+        self.root.bind("<Command-o>", self._import_from_event)
+        self.root.bind("<F5>", self._refresh_from_event)
+        self.root.bind("<Control-l>", self._focus_command)
+        self.root.bind("<Command-l>", self._focus_command)
+
+    def _track_button(self, button: _T) -> _T:
+        self.general_buttons.append(button)
+        return button
+
+    def _execute_from_event(self, _event: object) -> str:
+        self.execute_command()
+        return "break"
+
+    def _import_from_event(self, _event: object) -> str:
+        self.import_files()
+        return "break"
+
+    def _refresh_from_event(self, _event: object) -> str:
+        self.refresh_inputs()
+        return "break"
+
+    def _focus_command(self, _event: object) -> str:
+        self.notebook.select(0)
+        self.command_entry.focus_set()
+        return "break"
 
     def _load_settings(self) -> None:
         config = self.controller.load_config()
@@ -213,11 +653,23 @@ class DesktopApp:
         )
         self.poll_interval.set(str(config.poll_interval_seconds))
 
-    def refresh_inputs(self) -> None:
+    def refresh_inputs(self, *, announce: bool = True) -> None:
         self.input_list.delete(0, "end")
-        for path in self.controller.list_inputs():
+        inputs = self.controller.list_inputs()
+        for path in inputs:
             self.input_list.insert("end", path.name)
-        self.status.set(f"{self.input_list.size()} planilha(s) na entrada")
+        count = len(inputs)
+        self.input_summary.set(
+            "Nenhuma planilha adicionada"
+            if count == 0
+            else f"{count} planilha(s) pronta(s) para uso"
+        )
+        if announce:
+            self._set_status(
+                "Adicione uma planilha para começar"
+                if count == 0
+                else f"Lista atualizada: {count} planilha(s)",
+            )
 
     def import_files(self) -> None:
         from tkinter import filedialog
@@ -231,9 +683,14 @@ class DesktopApp:
                 lambda: self.controller.import_files(
                     tuple(Path(item) for item in selected)
                 ),
-                lambda _: self.refresh_inputs(),
+                self._after_import,
                 "Copiando planilhas...",
             )
+
+    def _after_import(self, value: object) -> None:
+        imported = tuple(value)  # type: ignore[arg-type]
+        self.refresh_inputs(announce=False)
+        self._set_status(f"{len(imported)} planilha(s) adicionada(s)", "success")
 
     def execute_command(self) -> None:
         command = self.command.get().strip()
@@ -243,7 +700,7 @@ class DesktopApp:
         self._submit(
             lambda: self.controller.execute(command),
             self._show_result,
-            "Executando pedido...",
+            "Interpretando o pedido e preparando a prévia...",
         )
 
     def _set_and_execute(self, command: str) -> None:
@@ -259,7 +716,8 @@ class DesktopApp:
 
     def _set_voice_text(self, text: str) -> None:
         self.command.set(text)
-        self.status.set("Comando por voz revisado. Clique em Executar.")
+        self.command_entry.focus_set()
+        self._set_status("Comando por voz transcrito. Revise e clique em Executar.")
 
     def confirm_plan(self) -> None:
         from tkinter import messagebox
@@ -269,7 +727,11 @@ class DesktopApp:
         plan_count = len(self.current_plan_ids)
         if not messagebox.askyesno(
             "Confirmar alterações",
-            f"Executar {plan_count} plano(s) exibido(s) em novas cópias?",
+            (
+                f"Executar {plan_count} plano(s) exibido(s)?\n\n"
+                "Os resultados serão gravados em novas cópias e os arquivos "
+                "originais serão preservados."
+            ),
             parent=self.root,
         ):
             return
@@ -279,7 +741,7 @@ class DesktopApp:
                 self.controller.confirm_plan(plan_id) for plan_id in plan_ids
             ),
             self._show_plan_results,
-            "Aplicando planos confirmados...",
+            "Aplicando os planos confirmados...",
         )
 
     def cancel_plan(self) -> None:
@@ -289,7 +751,7 @@ class DesktopApp:
         self._submit(
             lambda: tuple(self.controller.cancel_plan(plan_id) for plan_id in plan_ids),
             self._show_plan_results,
-            "Cancelando planos...",
+            "Cancelando os planos...",
         )
 
     def save_settings(self) -> None:
@@ -304,28 +766,32 @@ class DesktopApp:
                 use_native_pivot=self.native_pivot.get(),
                 poll_interval_seconds=interval,
             ),
-            lambda _: self.status.set("Configurações salvas"),
+            lambda _: self._set_status("Configurações salvas", "success"),
             "Salvando configurações...",
         )
 
     def toggle_monitor(self) -> None:
-        self.monitoring = not self.monitoring
-        self.monitor_button.configure(
-            text="Parar monitor" if self.monitoring else "Iniciar monitor"
-        )
         if self.monitoring:
-            self.status.set("Monitor ativo")
-            self._monitor_tick()
-        else:
-            self.status.set("Monitor parado")
+            self.monitoring = False
+            if self.monitor_after_id is not None:
+                self.root.after_cancel(self.monitor_after_id)
+                self.monitor_after_id = None
+            self.monitor_button.configure(text="Iniciar monitor")
+            self._set_status("Monitor parado")
+            return
+        self.monitoring = True
+        self.monitor_button.configure(text="Parar monitor")
+        self._set_status("Monitor ativo: aguardando novas planilhas", "success")
+        self._monitor_tick()
 
     def _monitor_tick(self) -> None:
+        self.monitor_after_id = None
         if not self.monitoring:
             return
-        self.refresh_inputs()
-        self.status.set("Monitor ativo: aguardando novas planilhas")
+        self.refresh_inputs(announce=False)
+        self._set_status("Monitor ativo: aguardando novas planilhas", "success")
         milliseconds = int(self.controller.load_config().poll_interval_seconds * 1000)
-        self.root.after(milliseconds, self._monitor_tick)
+        self.monitor_after_id = self.root.after(milliseconds, self._monitor_tick)
 
     def _show_result(self, value: object) -> None:
         result = value
@@ -335,8 +801,13 @@ class DesktopApp:
         self.current_plan_ids = plan_ids
         self._toggle_plan_buttons(bool(plan_ids))
         self._set_preview(content)
-        self.status.set("Prévia aguardando confirmação" if plan_ids else "Concluído")
-        self.refresh_inputs()
+        self.refresh_inputs(announce=False)
+        self._set_status(
+            "Prévia pronta: revise e confirme para gerar as cópias"
+            if plan_ids
+            else "Operação concluída",
+            "warning" if plan_ids else "success",
+        )
 
     def _show_plan_results(self, value: object) -> None:
         results = tuple(value)  # type: ignore[arg-type]
@@ -345,7 +816,9 @@ class DesktopApp:
         self._set_preview(
             "\n".join(format_assistant_result(result) for result in results)
         )
-        self.status.set("Planos concluídos")
+        self._set_status(
+            "Planos concluídos. Os originais foram preservados.", "success"
+        )
 
     def _submit(
         self,
@@ -354,10 +827,10 @@ class DesktopApp:
         status: str,
     ) -> None:
         if self.busy:
-            self.status.set("Aguarde a operação atual terminar")
+            self._set_status("Aguarde a operação atual terminar", "warning")
             return
-        self.busy = True
-        self.status.set(status)
+        self._set_busy(True)
+        self._set_status(status)
         future: Future[object] = self.executor.submit(operation)
         self.completed.put((future, on_success))  # type: ignore[arg-type]
 
@@ -374,14 +847,33 @@ class DesktopApp:
                     callback(result)
             except Exception as error:  # noqa: BLE001 - fronteira visual
                 self._show_error(str(error))
-                if self.monitoring:
-                    self.monitoring = False
-                    self.monitor_button.configure(text="Iniciar monitor")
+                self._stop_monitor_after_error()
             finally:
-                self.busy = False
+                self._set_busy(False)
         for item in pending:
             self.completed.put(item)
         self.root.after(100, self._poll_completed)
+
+    def _stop_monitor_after_error(self) -> None:
+        if not self.monitoring:
+            return
+        self.monitoring = False
+        if self.monitor_after_id is not None:
+            self.root.after_cancel(self.monitor_after_id)
+            self.monitor_after_id = None
+        self.monitor_button.configure(text="Iniciar monitor")
+
+    def _set_busy(self, active: bool) -> None:
+        self.busy = active
+        for button in self.general_buttons:
+            button.state(["disabled"] if active else ["!disabled"])
+        if not active and not self.controller.capabilities.voice_available:
+            self.voice_button.state(["disabled"])
+        self._toggle_plan_buttons(bool(self.current_plan_ids) and not active)
+        if active:
+            self.progress.start(12)
+        else:
+            self.progress.stop()
 
     def _set_preview(self, content: str) -> None:
         self.preview.configure(state="normal")
@@ -393,11 +885,25 @@ class DesktopApp:
         state = ["!disabled"] if enabled else ["disabled"]
         self.confirm_button.state(state)
         self.cancel_button.state(state)
+        count = len(self.current_plan_ids)
+        self.plan_summary.set(
+            f"{count} plano(s) aguardando" if count else "Nenhum plano aguardando"
+        )
+
+    def _set_status(self, message: str, tone: str = "normal") -> None:
+        styles = {
+            "normal": "Status.TLabel",
+            "success": "StatusSuccess.TLabel",
+            "warning": "StatusWarning.TLabel",
+            "error": "StatusError.TLabel",
+        }
+        self.status.set(message)
+        self.status_label.configure(style=styles.get(tone, "Status.TLabel"))
 
     def _show_error(self, message: str) -> None:
         from tkinter import messagebox
 
-        self.status.set("Atenção necessária")
+        self._set_status("Atenção necessária", "error")
         messagebox.showerror("Excel Compras Automation", message, parent=self.root)
 
     def _close(self) -> None:
@@ -411,5 +917,8 @@ class DesktopApp:
             )
             return
         self.monitoring = False
+        if self.monitor_after_id is not None:
+            self.root.after_cancel(self.monitor_after_id)
+            self.monitor_after_id = None
         self.executor.shutdown(wait=False, cancel_futures=True)
         self.root.destroy()
